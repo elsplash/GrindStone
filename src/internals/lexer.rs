@@ -46,11 +46,6 @@ pub struct LexToken<'linespan> {
     pub span: StrSpan<'linespan>,
 }
 
-pub struct LexUnknownSymbols {
-    line_span: LineSpan,
-    pub clmns: Vec<usize>,
-}
-
 pub struct LexerOutput<'linespan>(pub Vec<LexToken<'linespan>>);
 
 impl LexUnknownSymbols {
@@ -217,7 +212,7 @@ impl<'linespan> LexerOutput<'linespan> {
         });
     }
 
-    pub fn tokenize_file(&mut self, file_path: &str, us: &mut Vec<LexUnknownSymbols>, line_spans: &'linespan mut Vec<LineSpan>) -> bool {
+    pub fn tokenize_file(&mut self, file_path: &str, line_spans: &'linespan mut Vec<LineSpan>) -> bool {
         let path = Path::new(file_path);
         let file: File;
         match File::open(path) {
@@ -231,28 +226,23 @@ impl<'linespan> LexerOutput<'linespan> {
 
         let mut line_num: usize = 0;
 		for might_be_line in freader.lines() {
-            let Ok(line) = might_be_line else { return false; };
+            let Ok(line) = might_be_line else {
+                println!("[ERROR] Could not read from file {file_path}.");
+                return false;
+            };
             line_spans.push(LineSpan::new(line, line_num));
             line_num += 1;
         }
 
         let mut line_stat = LexStat::Identifier;
         for span in line_spans.iter() {
-            us.push(LexUnknownSymbols{
-                line_span: LineSpan{str: span.str.clone(), num: span.num},
-                clmns: Vec::new(),
-            });
-            let Some(us_front) = us.first_mut() else {
-                println!("[ERROR] Internal Error, you may report this to ESplash.");
-                return false;
-            };
-            self.tokenize_line(span, &mut line_stat, us_front);
+            self.tokenize_line(span, &mut line_stat);
         }
 
         true
     }
 
-    fn tokenize_line(&mut self, line: &'linespan LineSpan, stat: &mut LexStat, us: &mut LexUnknownSymbols) {
+    fn tokenize_line(&mut self, line: &'linespan LineSpan, stat: &mut LexStat) {
         let mut lchars = line.str.chars().peekable();
         let mut clmn: usize = 0;
         loop {
@@ -327,7 +317,7 @@ impl<'linespan> LexerOutput<'linespan> {
                 '[' => self.tok_push(&Token::LBracket, current, clmn, line),
                 ']' => self.tok_push(&Token::RBracket, current, clmn, line),
 
-                _ => us.clmns.push(clmn),
+                _ => self.tok_push(&Token::Identifier, current, clmn, line),
             }
             clmn += 1;
         }

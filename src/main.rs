@@ -12,24 +12,18 @@ fn main() {
         None => return,
     };
 
-    let mut err_count: usize = 0;
+    /* err count var */
 
     for file in grindstone_config.file_paths.iter() {
-        let mut lexer_errors: Vec<LexUnknownSymbols> = Vec::new();
         let mut line_spans: Vec<LineSpan> = Vec::new();
         let mut lex_output: LexerOutput = LexerOutput::new();
 
-        if !lex_output.tokenize_file(file, &mut lexer_errors, &mut line_spans) { break; }
+        if !lex_output.tokenize_file(file, &mut line_spans) { break; }
 
-        if let Some(front) = lexer_errors.first() && front.clmns.len() > 0 {
-            for err in lexer_errors.iter() {
-                err_count += err.clmns.len();
-                err.print();
-            }
-        }
-
-        /* Parser!! */
+        /* TOOD: Parse the CST, the CST should be outside of this loop. */
     }
+
+    /* TODO: Parse the CST to an AST. */
 
     /*
      * Semantically Analyze the Parsed output
@@ -39,8 +33,6 @@ fn main() {
      * interchangeable to Strings.
      */
 
-	if err_count != 0 {
-        println!("[GRINDSTONE] {err_count} errors generated. Fix them, as the code won't run.");
-    }
+    /* display error count */
 }
 
