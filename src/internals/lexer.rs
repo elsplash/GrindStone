@@ -34,6 +34,7 @@ pub struct LineSpan {
     num: usize,
 }
 
+#[derive(Clone)]
 pub struct StrSpan<'linespan> {
     pub line: &'linespan LineSpan,
     pub str: String,
@@ -41,6 +42,7 @@ pub struct StrSpan<'linespan> {
     span_len: usize,
 }
 
+#[derive(Clone)]
 pub struct LexToken<'linespan> {
     pub token: Token,
     pub span: StrSpan<'linespan>,
@@ -48,46 +50,11 @@ pub struct LexToken<'linespan> {
 
 pub struct LexerOutput<'linespan>(pub Vec<LexToken<'linespan>>);
 
-impl LexUnknownSymbols {
-	pub fn print(&self) -> bool {
-		let lnum_sz = (self.line_span.num / 10) + 1;
-        if self.clmns.len() <= 4 {
-            print!("[ERROR] Unknown symbols");
-            for symbol in self.clmns.iter() {
-                print!(", {symbol}");
-            }
-            println!(".");
-        } else { println!("[ERROR] Unknown multiple symbols."); }
-	    println!("{}", self.line_span);
-	    print!("{} | ", " ".repeat(lnum_sz));
-	    let Some(max) = self.clmns.last() else { return false; };
-	    let mut usc_iter = self.clmns.iter();
-        let mut next: usize;
-        match usc_iter.next() {
-            Some(n) => next = *n,
-            None => return true,
-        }
-		for i in 0..*max {
-	        if next == i {
-                match usc_iter.next() {
-        		    Some(n) => next = *n,
-        		    None => return true,
-        		}
-                print!("^");
-            }
-	        else { print!(" "); }
-	    }
-	    println!("\n");
-	
-	    true
-	}
-}
-
 impl LineSpan {
-    pub fn new<'linespan>(line_str: String, line_num: usize) -> LineSpan {
+    pub fn new() -> LineSpan {
         LineSpan{
-            str: line_str,
-            num: line_num,
+            str: String::new(),
+            num: 0,
         }
     }
 }
