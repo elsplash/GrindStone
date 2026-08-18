@@ -23,7 +23,7 @@ pub enum LinterMode {
 }
 
 pub struct GSConfig {
-	pub file_paths: Vec<String>,
+    pub file_paths: Vec<String>,
     pub tabspace_sz: i32,
     pub debug_flag: bool,
     pub fmt_mode: FormatterMode,
@@ -62,22 +62,22 @@ A tool that checks for errors, outside of the game.
 And also lints and formats.
 
 - Flags -
-	-h   | --help             : Prints this message.
-	-L#  | --linter-mode #    : Sets the linter mode, by a number, or name of the mode.
-	-F#  | --formatter-mode # : Sets the formatter mode, by a number or name of the mode.
-	-t # | --tab-spaces #     : Sets the tab spaces of the indentation.
-	-d   | --debug  		  : Makes more output. (For developers!)
+    -h   | --help             : Prints this message.
+    -L#  | --linter-mode #    : Sets the linter mode, by a number, or name of the mode.
+    -F#  | --formatter-mode # : Sets the formatter mode, by a number or name of the mode.
+    -t # | --tab-spaces #     : Sets the tab spaces of the indentation.
+    -d   | --debug            : Makes more output. (For developers!)
 
 - Linter modes -
-	-L -> 0 : Off    } Turns off the linter
-		  1 : Normal } Adds structural enforcement [DEFAULT]
-		  2 : Picky  } Will only show code errors
-		  3 : Strict } Also forces documentation of code
+    -L -> 0 : Off    } Turns off the linter
+          1 : Normal } Adds structural enforcement [DEFAULT]
+          2 : Picky  } Will only show code errors
+          3 : Strict } Also forces documentation of code
 
 - Formatter modes -
-	-F -> 0 : Off    } Turns the formatter off, code will not be modified [DEFAULT]
-		  1 : Normal } Fixes structure of code.
-		  2 : Strict } Also adds extra comments for you to add.
+    -F -> 0 : Off    } Turns the formatter off, code will not be modified [DEFAULT]
+          1 : Normal } Fixes structure of code.
+          2 : Strict } Also adds extra comments for you to add.
 "#;
                     println!("{help_message}");
                     return None;
@@ -91,7 +91,7 @@ And also lints and formats.
                 "1" => gsc.lntr_mode = LinterMode::Normal, /* Default, but for later versions maybe not. */
                 "2" => gsc.lntr_mode = LinterMode::Picky,
                 "3" => gsc.lntr_mode = LinterMode::Strict,
-                
+
                 "off" => gsc.lntr_mode = LinterMode::Off,
                 "normal" => gsc.lntr_mode = LinterMode::Normal, /* Default, but for later versions maybe not. */
                 "picky" => gsc.lntr_mode = LinterMode::Picky,
