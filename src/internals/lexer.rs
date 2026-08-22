@@ -38,8 +38,8 @@ pub struct LineSpan {
 pub struct StrSpan<'linespan> {
     pub line: &'linespan LineSpan,
     pub str: String,
-    span_clmn: usize,
-    span_len: usize,
+    pub clmn: usize,
+    pub len: usize,
 }
 
 #[derive(Clone)]
@@ -51,10 +51,10 @@ pub struct LexToken<'linespan> {
 pub struct LexerOutput<'linespan>(pub Vec<LexToken<'linespan>>);
 
 impl LineSpan {
-    pub fn new() -> LineSpan {
+    pub fn new(string: String, num: usize) -> LineSpan {
         LineSpan{
-            str: String::new(),
-            num: 0,
+            str: string,
+            num: num,
         }
     }
 }
@@ -69,8 +69,8 @@ impl<'linespan> StrSpan<'linespan> {
         StrSpan{
             str: s,
             line: line,
-            span_clmn: clmn_start,
-            span_len: clmn_end,
+            clmn: clmn_start,
+            len: clmn_end,
         }
     }
 }
@@ -131,8 +131,8 @@ impl<'linespan> Display for StrSpan<'linespan> {
         write!(f, "{}\n{} | {}{}",
             self.line,
             " ".repeat(lnum_sz),
-            " ".repeat(self.span_clmn),
-            "^".repeat(self.span_len)
+            " ".repeat(self.clmn),
+            "^".repeat(self.len)
         )
     }
 }
@@ -146,7 +146,7 @@ impl<'linespan> LexerOutput<'linespan> {
                 || *t == Token::Number
 				|| *t == Token::Space {
                 lt.span.str.push(c);
-                lt.span.span_clmn += 1;
+                lt.span.clmn += 1;
                 return;
             }
         };
@@ -155,7 +155,7 @@ impl<'linespan> LexerOutput<'linespan> {
             (Token::Number, Token::Identifier) => {
                 let new_span = StrSpan::new(
                     format!("{}{}", lt.span.str, c),
-                    line, lt.span.span_clmn, clmn,
+                    line, lt.span.clmn, clmn,
                 );
                 lt.token = Token::Identifier;
                 lt.span = new_span;
@@ -165,7 +165,7 @@ impl<'linespan> LexerOutput<'linespan> {
             (Token::Identifier, Token::Number) => {
                 let new_span = StrSpan::new(
                     format!("{}{}", lt.span.str, c),
-                    line, lt.span.span_clmn, clmn
+                    line, lt.span.clmn, clmn
                 );
                 lt.span = new_span;
             },
