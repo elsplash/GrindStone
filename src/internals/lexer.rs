@@ -20,12 +20,17 @@ pub enum Token {
     Plus, Minus, Star, Slash, Percent, At,
 
     LParen, RParen, LBracket, RBracket,
+
+    Comment, MultiComment,
+
+    Continue,
 }
 
 #[derive(Clone)]
 enum LexStat {
     Identifier,
     Number,
+    MultiComment,
 }
 
 #[derive(Clone)]
@@ -39,7 +44,6 @@ pub struct StrSpan<'linespan> {
     pub line: &'linespan LineSpan,
     pub str: String,
     pub clmn: usize,
-    pub len: usize,
 }
 
 #[derive(Clone)]
@@ -64,14 +68,29 @@ impl<'linespan> StrSpan<'linespan> {
         s: String,
         line: &'linespan LineSpan,
         clmn_start: usize,
-        clmn_end: usize
     ) -> StrSpan {
         StrSpan{
             str: s,
             line: line,
             clmn: clmn_start,
-            len: clmn_end,
         }
+    }
+}
+
+impl<'linespan> LexToken<'linespan> {
+    pub fn concat(&mut self, tok: LexToken<'linespan>) -> bool {
+        if self.span.line.num != tok.span.line.num { return false }
+        match self.token {
+            Token::Identifier => {/* Ignore */},
+            Token::Number if tok.token == Token::Number => {
+                self.span.str += tok.span.str.as_str();
+                return true;
+            }
+            _ => self.token = Token::Identifier,
+        }
+        self.span.str += tok.span.str.as_str();
+
+        true
     }
 }
 
@@ -114,6 +133,10 @@ impl Display for Token {
             Token::RParen => "Right Parenthesis",
             Token::LBracket => "Left Bracket",
             Token::RBracket => "Right Bracket",
+
+            Token::Comment => "Comment",
+            Token::MultiComment => "Multi-line Comment",
+            Token::Continue => "Caret",
         };
         write!(f, "{display}")
     }
@@ -132,7 +155,7 @@ impl<'linespan> Display for StrSpan<'linespan> {
             self.line,
             " ".repeat(lnum_sz),
             " ".repeat(self.clmn),
-            "^".repeat(self.len)
+            "^".repeat(self.str.len())
         )
     }
 }
@@ -144,7 +167,7 @@ impl<'linespan> LexerOutput<'linespan> {
         if let Some(lt) = self.0.last_mut() && lt.token == *t {
             if *t == Token::Identifier
                 || *t == Token::Number
-				|| *t == Token::Space {
+        || *t == Token::Space {
                 lt.span.str.push(c);
                 lt.span.clmn += 1;
                 return;
@@ -155,7 +178,7 @@ impl<'linespan> LexerOutput<'linespan> {
             (Token::Number, Token::Identifier) => {
                 let new_span = StrSpan::new(
                     format!("{}{}", lt.span.str, c),
-                    line, lt.span.clmn, clmn,
+                    line, lt.span.clmn,
                 );
                 lt.token = Token::Identifier;
                 lt.span = new_span;
@@ -165,7 +188,7 @@ impl<'linespan> LexerOutput<'linespan> {
             (Token::Identifier, Token::Number) => {
                 let new_span = StrSpan::new(
                     format!("{}{}", lt.span.str, c),
-                    line, lt.span.clmn, clmn
+                    line, lt.span.clmn,
                 );
                 lt.span = new_span;
             },
@@ -175,7 +198,7 @@ impl<'linespan> LexerOutput<'linespan> {
 
         self.0.push(LexToken{
             token: t.clone(),
-            span: StrSpan::new(String::from(c), line, clmn, clmn),
+            span: StrSpan::new(String::from(c), line, clmn),
         });
     }
 
@@ -192,7 +215,7 @@ impl<'linespan> LexerOutput<'linespan> {
         let freader: BufReader<File> = BufReader::new(file);
 
         let mut line_num: usize = 0;
-		for might_be_line in freader.lines() {
+        for might_be_line in freader.lines() {
             let Ok(line) = might_be_line else {
                 println!("[ERROR] Could not read from file {file_path}.");
                 return false;
@@ -215,28 +238,36 @@ impl<'linespan> LexerOutput<'linespan> {
         loop {
             let Some(current) = lchars.next() else { break; };
             match stat.clone() {
-            	LexStat::Identifier => {
-                    if current.is_alphabetic()
-                        || current == '#'
-                        || current == '_' {
-                        self.tok_push(&Token::Identifier, current, clmn, line);
-                        continue;
-                    } else if current.is_numeric() {
-                        *stat = LexStat::Number;
-                        self.tok_push(&Token::Number, current, clmn, line);
-                        continue;
-                    }
+                LexStat::Identifier => {
+                      if current.is_alphabetic()
+                          || current == '#'
+                          || current == '_' {
+                          self.tok_push(&Token::Identifier, current, clmn, line);
+                          continue;
+                      } else if current.is_numeric() {
+                          *stat = LexStat::Number;
+                          self.tok_push(&Token::Number, current, clmn, line);
+                          continue;
+                      }
+                  },
+
+                LexStat::Number => {
+                      if current.is_numeric() || current == '.' {
+                          self.tok_push(&Token::Number, current, clmn, line);
+                          continue;
+                      } else if current.is_alphabetic() {
+                          *stat = LexStat::Identifier;
+                          self.tok_push(&Token::Identifier, current, clmn, line);
+                          continue;
+                      }
                 },
 
-            	LexStat::Number => {
-                    if current.is_numeric() || current == '.' {
-                        self.tok_push(&Token::Number, current, clmn, line);
-                        continue;
-                    } else if current.is_alphabetic() {
-                        *stat = LexStat::Identifier;
-                        self.tok_push(&Token::Identifier, current, clmn, line);
-                        continue;
+                LexStat::MultiComment => {
+                    if current == '*' {
+                        let Some(peek) = lchars.peek() else { return };
+                        if *peek == '/' { *stat = LexStat::Identifier; }
                     }
+                    continue;
                 },
             }
 
@@ -247,7 +278,14 @@ impl<'linespan> LexerOutput<'linespan> {
                 '"' => self.tok_push(&Token::Quote, current, clmn, line),
                 '`' => self.tok_push(&Token::Tilde, current, clmn, line),
                 '#' => self.tok_push(&Token::Hashtag, current, clmn, line),
-                '^' => self.tok_push(&Token::Caret, current, clmn, line),
+
+                '^' => {
+                    if let Some(ltok) = self.0.last() && ltok.token == Token::Newline {
+                        self.0.pop();
+                        continue;
+                    }
+                    self.tok_push(&Token::Caret, current, clmn, line)
+                },
 
                 '?' => self.tok_push(&Token::QuestMark, current, clmn, line),
                 ':' => self.tok_push(&Token::Colon, current, clmn, line),
@@ -275,7 +313,25 @@ impl<'linespan> LexerOutput<'linespan> {
                 '+' => self.tok_push(&Token::Plus, current, clmn, line),
                 '-' => self.tok_push(&Token::Minus, current, clmn, line),
                 '*' => self.tok_push(&Token::Star, current, clmn, line),
-                '/' => self.tok_push(&Token::Slash, current, clmn, line),
+
+                '/' => {
+                    if let Some(peek) = lchars.peek() {match *peek {
+                        '/' => {
+                            lchars.next();
+                            self.tok_push(&Token::Comment, current, clmn, line);
+                            break;
+                        },
+                        '*' => {
+                            lchars.next();
+                            self.tok_push(&Token::MultiComment, current, clmn, line);
+                            *stat = LexStat::MultiComment;
+                            continue;
+                        },
+                        _ => {},
+                    }}
+                    self.tok_push(&Token::Slash, current, clmn, line)
+                },
+
                 '@' => self.tok_push(&Token::At, current, clmn, line),
                 '%' => self.tok_push(&Token::Percent, current, clmn, line),
 
