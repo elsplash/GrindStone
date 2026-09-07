@@ -2,7 +2,6 @@ mod internals;
 use internals::{
     handle_args,
     LineSpan,
-    LexUnknownSymbols,
     LexerOutput,
 };
 

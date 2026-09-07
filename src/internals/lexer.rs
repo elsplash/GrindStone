@@ -17,7 +17,7 @@ pub enum Token {
 
     And, Bar, ExclMark,
 
-    Plus, Minus, Star, Slash, Percent, At,
+    Plus, Dash, Star, Slash, Percent, At,
 
     LParen, RParen, LBracket, RBracket,
 
@@ -123,7 +123,7 @@ impl Display for Token {
             Token::ExclMark => "Exclamation Mark",
 
             Token::Plus => "Plus",
-            Token::Minus => "Minus",
+            Token::Dash => "Dash",
             Token::Star => "Star",
             Token::Slash => "Slash",
             Token::Percent => "Percent",
@@ -311,7 +311,7 @@ impl<'linespan> LexerOutput<'linespan> {
                 '!' => self.tok_push(&Token::ExclMark, current, clmn, line),
 
                 '+' => self.tok_push(&Token::Plus, current, clmn, line),
-                '-' => self.tok_push(&Token::Minus, current, clmn, line),
+                '-' => self.tok_push(&Token::Dash, current, clmn, line),
                 '*' => self.tok_push(&Token::Star, current, clmn, line),
 
                 '/' => {

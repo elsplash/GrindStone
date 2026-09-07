@@ -77,3 +77,15 @@ fixes the naming conventions for you.
 ## Usage
 
 > IN DEVELOPMENT!
+
+## Future implementations
+
+This should just be a list of things I should implement
+after I stopped working on the project, which is updated
+in [insert date] currently.
+
+> None at the moment.
+
+## Review
+
+> TBA
