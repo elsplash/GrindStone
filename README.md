@@ -1,5 +1,21 @@
 # GrindStone
 
+## ANNOUNCEMENTS
+
+This project has gone way too big, and now the schedules are colliding.
+I will have to cut some features of this project. I will have to cut
+these features:
+
+- Linter
+- Formatter
+
+As they have gone way out of the schedule, you may thank the CST parser
+for this hassle.
+
+This project will still have error checking, don't worry. I am trying
+my best to not make this project a unfinished one where it's forever
+useless. Please, do understand.
+
 ## About the Project
 
 This project aims to offer errors outside of the game. While also
