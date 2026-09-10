@@ -1,0 +1,237 @@
+lt.token = Identifier, t = Space
+lt.token = Space, t = Identifier
+lt.token = Identifier, t = Slash (/)
+lt.token = Slash (/), t = Identifier
+lt.token = Identifier, t = Newline
+lt.token = Newline, t = Newline
+lt.token = Newline, t = Identifier
+lt.token = Identifier, t = Space
+lt.token = Space, t = Identifier
+lt.token = Identifier, t = Space
+lt.token = Space, t = Equal (=)
+lt.token = Equal (=), t = Space
+lt.token = Space, t = Quote (")
+lt.token = Quote ("), t = Identifier
+lt.token = Identifier, t = Space
+lt.token = Space, t = Identifier
+lt.token = Identifier, t = Exclamation Mark (!)
+lt.token = Exclamation Mark (!), t = Quote (")
+lt.token = Quote ("), t = Newline
+lt.token = Newline, t = Identifier
+lt.token = Identifier, t = Space
+lt.token = Space, t = Identifier
+lt.token = Identifier, t = Space
+lt.token = Space, t = Equal (=)
+lt.token = Equal (=), t = Space
+lt.token = Space, t = Number
+lt.token = Number, t = Newline
+lt.token = Newline, t = Identifier
+lt.token = Identifier, t = Space
+lt.token = Space, t = Identifier
+lt.token = Identifier, t = Space
+lt.token = Space, t = Equal (=)
+lt.token = Equal (=), t = Space
+lt.token = Space, t = Identifier
+lt.token = Identifier, t = Newline
+lt.token = Newline, t = Identifier
+lt.token = Identifier, t = Space
+lt.token = Space, t = Identifier
+lt.token = Identifier, t = Space
+lt.token = Space, t = Equal (=)
+lt.token = Equal (=), t = Space
+lt.token = Space, t = At, or Ki (@)
+lt.token = At, or Ki (@), t = Identifier
+lt.token = Identifier, t = At, or Ki (@)
+lt.token = At, or Ki (@), t = Newline
+lt.token = Newline, t = Newline
+lt.token = Newline, t = Identifier
+lt.token = Identifier, t = Space
+lt.token = Space, t = Identifier
+lt.token = Identifier, t = Left Parenthesis `(`
+lt.token = Left Parenthesis `(`, t = Right Parenthesis `(`
+lt.token = Right Parenthesis `(`, t = Newline
+lt.token = Newline, t = Space
+lt.token = Space, t = Greater Than (>)
+lt.token = Greater Than (>), t = At, or Ki (@)
+lt.token = At, or Ki (@), t = Identifier
+lt.token = Identifier, t = At, or Ki (@)
+lt.token = At, or Ki (@), t = Newline
+lt.token = Newline, t = Newline
+lt.token = Newline, t = Identifier
+lt.token = Identifier, t = Space
+lt.token = Space, t = Identifier
+lt.token = Identifier, t = Space
+lt.token = Space, t = Left Parenthesis `(`
+lt.token = Left Parenthesis `(`, t = Right Parenthesis `(`
+lt.token = Right Parenthesis `(`, t = Newline
+lt.token = Newline, t = Newline
+lt.token = Newline, t = Identifier
+lt.token = Identifier, t = Space
+lt.token = Space, t = Identifier
+lt.token = Identifier, t = Space
+lt.token = Space, t = Equal (=)
+lt.token = Equal (=), t = Space
+lt.token = Space, t = Number
+lt.token = Number, t = Dash (-)
+lt.token = Dash (-), t = Number
+lt.token = Number, t = Newline
+lt.token = Newline, t = Space
+lt.token = Space, t = Greater Than (>)
+lt.token = Greater Than (>), t = At, or Ki (@)
+lt.token = At, or Ki (@), t = Identifier
+lt.token = Identifier, t = At, or Ki (@)
+lt.token = At, or Ki (@), t = Newline
+lt.token = Newline, t = Newline
+lt.token = Newline, t = Greater Than (>)
+lt.token = Greater Than (>), t = Space
+lt.token = Space, t = Identifier
+lt.token = Identifier, t = Space
+lt.token = Space, t = Identifier
+lt.token = Identifier, t = Exclamation Mark (!)
+lt.token = Exclamation Mark (!), t = Newline
+lt.token = Newline, t = Newline
+lt.token = Newline, t = Greater Than (>)
+lt.token = Greater Than (>), t = Tilde (`)
+lt.token = Tilde (`), t = Identifier
+lt.token = Identifier, t = Newline
+lt.token = Newline, t = Greater Than (>)
+lt.token = Greater Than (>), t = Tilde (`)
+lt.token = Tilde (`), t = Number
+lt.token = Number, t = Comma (,)
+lt.token = Comma (,), t = Number
+lt.token = Number, t = Comma (,)
+lt.token = Comma (,), t = Hashtag (#)
+lt.token = Hashtag (#), t = Identifier
+lt.token = Identifier, t = Comma (,)
+lt.token = Comma (,), t = Identifier
+lt.token = Identifier, t = Newline
+lt.token = Newline, t = Greater Than (>)
+lt.token = Greater Than (>), t = Tilde (`)
+lt.token = Tilde (`), t = Number
+lt.token = Number, t = Comma (,)
+lt.token = Comma (,), t = Number
+lt.token = Number, t = Comma (,)
+lt.token = Comma (,), t = Hashtag (#)
+lt.token = Hashtag (#), t = Identifier
+lt.token = Identifier, t = Newline
+lt.token = Newline, t = Newline
+lt.token = Newline, t = Greater Than (>)
+lt.token = Greater Than (>), t = Left Parenthesis `(`
+lt.token = Left Parenthesis `(`, t = Identifier
+lt.token = Identifier, t = Newline
+lt.token = Newline, t = Greater Than (>)
+lt.token = Greater Than (>), t = Left Parenthesis `(`
+lt.token = Left Parenthesis `(`, t = Space
+lt.token = Space, t = Identifier
+lt.token = Identifier, t = Newline
+lt.token = Newline, t = Newline
+lt.token = Newline, t = Greater Than (>)
+lt.token = Greater Than (>), t = Space
+lt.token = Space, t = Identifier
+lt.token = Identifier, t = Newline
+lt.token = Newline, t = Identifier
+lt.token = Identifier, t = Space
+lt.token = Space, t = Identifier
+lt.token = Identifier, t = Newline
+expr1 = Number {
+    num: LexToken {
+        token: Number,
+        span: StrSpan {
+            line: LineSpan {
+                str: "for i = 20..-12",
+                num: 13,
+            },
+            str: "20..",
+            clmn: 8,
+        },
+    },
+}
+
+dot1 = LexToken {
+    token: Number,
+    span: StrSpan {
+        line: LineSpan {
+            str: "for i = 20..-12",
+            num: 13,
+        },
+        str: "-12",
+        clmn: 12,
+    },
+}
+dot2 = LexToken {
+    token: Number,
+    span: StrSpan {
+        line: LineSpan {
+            str: "for i = 20..-12",
+            num: 13,
+        },
+        str: "-12",
+        clmn: 12,
+    },
+}
+expr2 = Number {
+    num: LexToken {
+        token: Number,
+        span: StrSpan {
+            line: LineSpan {
+                str: "for i = 20..-12",
+                num: 13,
+            },
+            str: "-12",
+            clmn: 12,
+        },
+    },
+}
+
+[ERROR] Expected Dot (.) got Number
+13 | for i = 20..-12
+   |             ^^^
+[HINT] You may need to replace `-12` with a Dot (.)
+
+[ERROR] Expected Dot (.) got Number
+13 | for i = 20..-12
+   |             ^^^
+[HINT] You may need to replace `-12` with a Dot (.)
+
+[ERROR] Internal Error, this is not your fault.
+;)
+[HELP] You may report this to the devs. ErrCode: 104
+
+[WARNING] Implicit Print was cast into a Normal Print.
+18 | >`implicitcast
+   | ~~~~~~~~~~~~~~ <- Is made into `>`.
+[HINT] Fixing the previous error(s) will fix it.
+
+[ERROR] Internal Error, this is not your fault.
+;)
+[HELP] You may report this to the devs. ErrCode: 104
+
+[WARNING] Implicit Print was cast into a Normal Print.
+19 | >`0,0,#rainff,normal
+   | ~~~~~~~~~~~~~~~~~~~~ <- Is made into `>`.
+[HINT] Fixing the previous error(s) will fix it.
+
+[ERROR] Internal Error, this is not your fault.
+;)
+[HELP] You may report this to the devs. ErrCode: 104
+
+[WARNING] Implicit Print was cast into a Normal Print.
+20 | >`0,0,#implicitcast
+   | ~~~~~~~~~~~~~~~~~~~ <- Is made into `>`.
+[HINT] Fixing the previous error(s) will fix it.
+
+[WARNING] Implicit Print was cast into a Normal Print.
+22 | >(helloworld
+   | ~~~~~~~~~~~~ <- Is made into `>`.
+[HINT] Fixing the previous error(s) will fix it.
+
+[ERROR] Expected Equal (=) got Newline
+26 | PLEASE ERROR
+   |             ^
+[HINT] You may need to replace `
+` with a Equal (=)
+
+[REPORT] 10 errors reported.
+[NOTE] File `test.txt` was not read completely by an error.
+[NOTE] You may fix the errors from `test.txt` and rerun GrindStone.
+

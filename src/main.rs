@@ -14,7 +14,8 @@ fn main() {
 
     /* let mut ast_tree = ASTOutput::new(); */
 
-    /* err count var */
+    let mut err_count: usize = 0;
+    let mut is_end_early_by_err: Vec<String> = vec![];
 
     for file in grindstone_config.file_paths.iter() {
         let mut line_spans: Vec<LineSpan> = Vec::new();
@@ -23,13 +24,21 @@ fn main() {
         if !lex_output.tokenize_file(file, &mut line_spans) { break; }
 
     	let mut cst_tree = CSTOutput::new();
-        cst_tree.parse_all(&mut lex_output);
+        if !cst_tree.parse_all(&mut lex_output) { is_end_early_by_err.push(file.clone()) }
+
+        // for node in cst_tree.output.iter() {
+        //     println!("{:#?}\n", node);
+        // }
+
+    	for err in cst_tree.errs.iter() {
+    	    println!("{err}\n");
+    	}
+
+        err_count += cst_tree.errs.len();
 
         /* AST Will merge all CST Trees */
         /* ast_tree.merge(cst_tree); */
     }
-
-    // ...
 
     /* TODO: Semantic Analyzer */
 
@@ -41,6 +50,12 @@ fn main() {
      * interchangeable to Strings.
      */
 
-    /* display error count */
-}
+    if err_count != 0 {
+        println!("[REPORT] {} errors reported.", err_count);
+    }
 
+    for ended_early in is_end_early_by_err.iter() {
+        println!("[NOTE] File `{ended_early}` was not read completely by an error.");
+        println!("[NOTE] You may fix the errors from `{ended_early}` and rerun GrindStone.\n");
+    }
+}

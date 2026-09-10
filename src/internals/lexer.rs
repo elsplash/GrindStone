@@ -33,20 +33,20 @@ enum LexStat {
     MultiComment,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LineSpan {
     str: String,
     num: usize,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct StrSpan<'linespan> {
     pub line: &'linespan LineSpan,
     pub str: String,
     pub clmn: usize,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LexToken<'linespan> {
     pub token: Token,
     pub span: StrSpan<'linespan>,
@@ -71,7 +71,7 @@ impl<'linespan> StrSpan<'linespan> {
         s: String,
         line: &'linespan LineSpan,
         clmn_start: usize,
-    ) -> StrSpan {
+    ) -> StrSpan<'linespan> {
         StrSpan{
             str: s,
             line: line,
@@ -85,10 +85,18 @@ impl<'linespan> LexToken<'linespan> {
         if self.span.line.num != tok.span.line.num { return false }
         match self.token {
             Token::Identifier => {/* Ignore */},
+
             Token::Number if tok.token == Token::Number => {
                 self.span.str += tok.span.str.as_str();
                 return true;
-            }
+            },
+
+            Token::Dash | Token::Plus if tok.token == Token::Number => {
+                self.token = Token::Number;
+                self.span.str += tok.span.str.as_str();
+                return true;
+            },
+
             _ => self.token = Token::Identifier,
         }
         self.span.str += tok.span.str.as_str();
@@ -106,40 +114,40 @@ impl Display for Token {
             Token::Newline => "Newline",
             Token::Space => "Space",
 
-            Token::Dot => "Dot",
-            Token::Comma => "Comma",
-            Token::Quote => "Quote",
-            Token::Tilde => "Tilde",
-            Token::Hashtag => "Hashtag",
-            Token::Caret => "Caret",
+            Token::Dot => "Dot (.)",
+            Token::Comma => "Comma (,)",
+            Token::Quote => "Quote (\")",
+            Token::Tilde => "Tilde (`)",
+            Token::Hashtag => "Hashtag (#)",
+            Token::Caret => "Caret (^)",
 
-            Token::QuestMark => "Question Mark",
-            Token::Colon => "Colon",
-            Token::Equal => "Equal",
-            Token::Lesser => "Lesser Than",
-            Token::Greater => "Greater Than",
-            Token::LessEq => "Lesser or Equal Than",
-            Token::GreatEq => "Greater or Equal Than",
+            Token::QuestMark => "Question Mark (?)",
+            Token::Colon => "Colon (:)",
+            Token::Equal => "Equal (=)",
+            Token::Lesser => "Lesser Than (<)",
+            Token::Greater => "Greater Than (>)",
+            Token::LessEq => "Lesser or Equal Than (<=)",
+            Token::GreatEq => "Greater or Equal Than (>=)",
 
-            Token::And => "Ampersand",
-            Token::Bar => "Bar",
-            Token::ExclMark => "Exclamation Mark",
+            Token::And => "Ampersand (&)",
+            Token::Bar => "Bar (|)",
+            Token::ExclMark => "Exclamation Mark (!)",
 
-            Token::Plus => "Plus",
-            Token::Dash => "Dash",
-            Token::Star => "Star",
-            Token::Slash => "Slash",
-            Token::Percent => "Percent",
-            Token::At => "At, or Ki",
+            Token::Plus => "Plus (+)",
+            Token::Dash => "Dash (-)",
+            Token::Star => "Star (*)",
+            Token::Slash => "Slash (/)",
+            Token::Percent => "Percent(%)",
+            Token::At => "At, or Ki (@)",
 
-            Token::LParen => "Left Parenthesis",
-            Token::RParen => "Right Parenthesis",
-            Token::LBracket => "Left Bracket",
-            Token::RBracket => "Right Bracket",
+            Token::LParen => "Left Parenthesis `(`",
+            Token::RParen => "Right Parenthesis `(`",
+            Token::LBracket => "Left Bracket ([)",
+            Token::RBracket => "Right Bracket (])",
 
-            Token::Comment => "Comment",
-            Token::MultiComment => "Multi-line Comment",
-            Token::Continue => "Caret",
+            Token::Comment => "Comment (//)",
+            Token::MultiComment => "Multi-line Comment (/*)",
+            Token::Continue => "Caret (^)",
         };
         write!(f, "{display}")
     }
@@ -153,7 +161,7 @@ impl Display for LineSpan {
 
 impl<'linespan> Display for StrSpan<'linespan> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let lnum_sz = (self.line.num / 10) + 1;
+        let lnum_sz = self.line.num.to_string().len();
         write!(f, "{}\n{} | {}{}",
             self.line,
             " ".repeat(lnum_sz),
@@ -170,34 +178,49 @@ impl<'linespan> LexerOutput<'linespan> {
         if let Some(lt) = self.0.last_mut() && lt.token == *t {
             if *t == Token::Identifier
                 || *t == Token::Number
-        || *t == Token::Space {
-                lt.span.str.push(c);
-                lt.span.clmn += 1;
-                return;
-            }
+                || *t == Token::Space {
+                    lt.span.str.push(c);
+                    return;
+                }
         };
 
-        if let Some(lt) = self.0.last_mut() {match (lt.token.clone(), t) {
-            (Token::Number, Token::Identifier) => {
-                let new_span = StrSpan::new(
-                    format!("{}{}", lt.span.str, c),
-                    line, lt.span.clmn,
-                );
-                lt.token = Token::Identifier;
-                lt.span = new_span;
-                return;
-            },
 
-            (Token::Identifier, Token::Number) => {
-                let new_span = StrSpan::new(
-                    format!("{}{}", lt.span.str, c),
-                    line, lt.span.clmn,
-                );
-                lt.span = new_span;
-            },
+        if let Some(lt) = self.0.last_mut() {
+            match (lt.token.clone(), t.clone()) {
+        	    (Token::Number, Token::Identifier) => {
+        	        lt.token = Token::Identifier;
+        	        lt.span.str.push(c);
+        	        return;
+        	    },
 
-            _ => {}
-        }}
+        	    (Token::Plus, Token::Number) | (Token::Dash, Token::Number) => {
+        	        lt.token = Token::Number;
+        	        lt.span.str.push(c);
+        	        return;
+        	    },
+
+        	    (Token::Number, Token::Dot)  => {
+        	        let there_dot = lt.span.str.chars().any(|lt_c| lt_c == '.');
+        	        if !there_dot {
+        	            lt.span.str.push(c);
+        	            return;
+        	        } else if let Some(lt_c) = lt.span.str.chars().last() && lt_c == '.' {
+        	            lt.span.str.pop();
+        	            self.0.push(LexToken{
+        	                token: Token::Dot,
+        	                span: StrSpan::new(".".to_string(), line, clmn - 1),
+        	            });
+        	        }
+        	    },
+
+        	    (Token::Identifier, Token::Number) => {
+        	        lt.span.str.push(c);
+        	        return;
+        	    },
+
+        	    _ => {}
+        	}
+        }
 
         self.0.push(LexToken{
             token: t.clone(),
@@ -217,7 +240,7 @@ impl<'linespan> LexerOutput<'linespan> {
         }
         let freader: BufReader<File> = BufReader::new(file);
 
-        let mut line_num: usize = 0;
+        let mut line_num: usize = 1;
         for might_be_line in freader.lines() {
             let Ok(line) = might_be_line else {
                 println!("[ERROR] Could not read from file {file_path}.");
@@ -242,25 +265,27 @@ impl<'linespan> LexerOutput<'linespan> {
             let Some(current) = lchars.next() else { break; };
             match stat.clone() {
                 LexStat::Identifier => {
-                      if current.is_alphabetic()
-                          || current == '#'
-                          || current == '_' {
+                      if current.is_alphabetic() || current == '#' || current == '_' {
                           self.tok_push(&Token::Identifier, current, clmn, line);
+                          clmn += 1;
                           continue;
                       } else if current.is_numeric() {
                           *stat = LexStat::Number;
                           self.tok_push(&Token::Number, current, clmn, line);
+                          clmn += 1;
                           continue;
                       }
                   },
 
                 LexStat::Number => {
-                      if current.is_numeric() || current == '.' {
+                      if current.is_digit(10) {
                           self.tok_push(&Token::Number, current, clmn, line);
+                          clmn += 1;
                           continue;
                       } else if current.is_alphabetic() {
                           *stat = LexStat::Identifier;
                           self.tok_push(&Token::Identifier, current, clmn, line);
+                          clmn += 1;
                           continue;
                       }
                 },
@@ -270,6 +295,7 @@ impl<'linespan> LexerOutput<'linespan> {
                         let Some(peek) = lchars.peek() else { return };
                         if *peek == '/' { *stat = LexStat::Identifier; }
                     }
+                    clmn += 1;
                     continue;
                 },
             }
@@ -284,7 +310,8 @@ impl<'linespan> LexerOutput<'linespan> {
 
                 '^' => {
                     let Some(space_or_newline) = self.0.last() else {
-                    	self.tok_push(&Token::Caret, current, clmn, line);
+                        self.tok_push(&Token::Caret, current, clmn, line);
+                        clmn += 1;
                         continue;
                     };
                     match space_or_newline.token {
@@ -292,11 +319,13 @@ impl<'linespan> LexerOutput<'linespan> {
                             let copy = space_or_newline.clone();
                             self.0.pop();
                             let Some(newline) = self.0.last() else {
-                    			self.tok_push(&Token::Caret, current, clmn, line);
+                                self.tok_push(&Token::Caret, current, clmn, line);
+                                clmn += 1;
                                 continue;
                             };
                             if newline.token != Token::Newline {
                                 self.0.push(copy);
+                                clmn += 1;
                                 continue;
                             } else {
                                 self.0.pop();
@@ -305,7 +334,8 @@ impl<'linespan> LexerOutput<'linespan> {
                         },
                         Token::Newline => {
                             self.0.pop();
-                            contiune;
+                            clmn += 1;
+                            continue;
                         },
                         _ => {},
                     }
@@ -350,6 +380,7 @@ impl<'linespan> LexerOutput<'linespan> {
                             lchars.next();
                             self.tok_push(&Token::MultiComment, current, clmn, line);
                             *stat = LexStat::MultiComment;
+                            clmn += 1;
                             continue;
                         },
                         _ => {},
@@ -365,7 +396,10 @@ impl<'linespan> LexerOutput<'linespan> {
                 '[' => self.tok_push(&Token::LBracket, current, clmn, line),
                 ']' => self.tok_push(&Token::RBracket, current, clmn, line),
 
-                '\t' => for _ in 0..2 { self.tok_push(&Token::Space, current, clmn, line) }
+                '\t' => {
+                    println!("[WARNING] You used tabs instead of spaces in line {line}, column {clmn}. There will be issues in error tracking.");
+                    for _ in 0..2 { self.tok_push(&Token::Space, current, clmn, line) }
+                },
 
                 _ => self.tok_push(&Token::Identifier, current, clmn, line),
             }
