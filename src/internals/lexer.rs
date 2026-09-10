@@ -61,6 +61,9 @@ impl LineSpan {
             num: num,
         }
     }
+
+    pub const fn get_num(&self) -> usize { self.num }
+    pub fn get_line(&self) -> String { self.str.clone() }
 }
 
 impl<'linespan> StrSpan<'linespan> {
@@ -280,9 +283,31 @@ impl<'linespan> LexerOutput<'linespan> {
                 '#' => self.tok_push(&Token::Hashtag, current, clmn, line),
 
                 '^' => {
-                    if let Some(ltok) = self.0.last() && ltok.token == Token::Newline {
-                        self.0.pop();
+                    let Some(space_or_newline) = self.0.last() else {
+                    	self.tok_push(&Token::Caret, current, clmn, line);
                         continue;
+                    };
+                    match space_or_newline.token {
+                        Token::Space => {
+                            let copy = space_or_newline.clone();
+                            self.0.pop();
+                            let Some(newline) = self.0.last() else {
+                    			self.tok_push(&Token::Caret, current, clmn, line);
+                                continue;
+                            };
+                            if newline.token != Token::Newline {
+                                self.0.push(copy);
+                                continue;
+                            } else {
+                                self.0.pop();
+                                self.tok_push(&Token::Continue, current, clmn, line);
+                            }
+                        },
+                        Token::Newline => {
+                            self.0.pop();
+                            contiune;
+                        },
+                        _ => {},
                     }
                     self.tok_push(&Token::Caret, current, clmn, line)
                 },
@@ -339,6 +364,8 @@ impl<'linespan> LexerOutput<'linespan> {
                 ')' => self.tok_push(&Token::RParen, current, clmn, line),
                 '[' => self.tok_push(&Token::LBracket, current, clmn, line),
                 ']' => self.tok_push(&Token::RBracket, current, clmn, line),
+
+                '\t' => for _ in 0..2 { self.tok_push(&Token::Space, current, clmn, line) }
 
                 _ => self.tok_push(&Token::Identifier, current, clmn, line),
             }

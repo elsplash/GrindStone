@@ -14,24 +14,7 @@ for this hassle.
 
 This project will still have error checking, don't worry. I am trying
 my best to not make this project a unfinished one where it's forever
-useless. Please, do understand.
-
-## About the Project
-
-This project aims to offer errors outside of the game. While also
-providing tips to not waste another trip to the Stonescript Manual.
-
-## Features
-
-> For when the project finishes
-
-### Colorized output (woah!)
-
-> Insert errors
-
-### A Fleshed out Syntax Checker along with errors
-
-This should be a solution for people working with a large codebase
+ working with a large codebase
 of Stonescript, like [this one](https://github.com/Eunomiac/stone-story).
 
 In which you shouldn't cite your code line by line or be

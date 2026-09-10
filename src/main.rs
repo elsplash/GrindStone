@@ -3,6 +3,7 @@ use internals::{
     handle_args,
     LineSpan,
     LexerOutput,
+    CSTOutput,
 };
 
 fn main() {
@@ -10,6 +11,8 @@ fn main() {
         Some(gsc) => gsc,
         None => return,
     };
+
+    /* let mut ast_tree = ASTOutput::new(); */
 
     /* err count var */
 
@@ -19,10 +22,16 @@ fn main() {
 
         if !lex_output.tokenize_file(file, &mut line_spans) { break; }
 
-        /* TOOD: Parse the CST, the CST should be outside of this loop. */
+    	let mut cst_tree = CSTOutput::new();
+        cst_tree.parse_all(&mut lex_output);
+
+        /* AST Will merge all CST Trees */
+        /* ast_tree.merge(cst_tree); */
     }
 
-    /* TODO: Parse the CST to an AST. */
+    // ...
+
+    /* TODO: Semantic Analyzer */
 
     /*
      * Semantically Analyze the Parsed output
