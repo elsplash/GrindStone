@@ -1,5 +1,0 @@
-// Hello World!
-/* What's up? */
-/*
- * Hello World!
- */
