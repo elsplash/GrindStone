@@ -260,7 +260,7 @@ impl<'linespan> LexerOutput<'linespan> {
 
     fn tokenize_line(&mut self, line: &'linespan LineSpan, stat: &mut LexStat) {
         let mut lchars = line.str.chars().peekable();
-        let mut clmn: usize = 0;
+        let mut clmn: usize = 1;
         loop {
             let Some(current) = lchars.next() else { break; };
             match stat.clone() {
@@ -291,6 +291,7 @@ impl<'linespan> LexerOutput<'linespan> {
                 },
 
                 LexStat::MultiComment => {
+                    println!("Hello World!");
                     if current == '*' {
                         let Some(peek) = lchars.peek() else { return };
                         if *peek == '/' { *stat = LexStat::Identifier; }
@@ -397,7 +398,10 @@ impl<'linespan> LexerOutput<'linespan> {
                 ']' => self.tok_push(&Token::RBracket, current, clmn, line),
 
                 '\t' => {
-                    println!("[WARNING] You used tabs instead of spaces in line {line}, column {clmn}. There will be issues in error tracking.");
+                    println!(
+                        "[WARNING] You used tabs instead of spaces in line {}, column {clmn}. There will be issues in error tracking.\n",
+                        line.str
+                    );
                     for _ in 0..2 { self.tok_push(&Token::Space, current, clmn, line) }
                 },
 

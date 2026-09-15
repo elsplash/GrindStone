@@ -1,6 +1,5 @@
-?item.left.state = 3
-	equipL wand -poison *0 +0
-    equipL @item.left@
-?item.right.state = 3
-    equipR shield *0 +0
-    equip @item.right@
+// Hello World!
+/* What's up? */
+/*
+ * Hello World!
+ */
