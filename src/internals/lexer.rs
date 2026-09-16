@@ -176,50 +176,47 @@ impl<'linespan> LexerOutput<'linespan> {
 
     fn tok_push(&mut self, t: &Token, c: char, clmn: usize, line: &'linespan LineSpan) {
         if let Some(lt) = self.0.last_mut() && lt.token == *t {
-            if *t == Token::Identifier
-                || *t == Token::Number
-                || *t == Token::Space {
-                    lt.span.str.push(c);
-                    return;
-                }
+            if *t == Token::Identifier || *t == Token::Number || *t == Token::Space {
+                lt.span.str.push(c);
+                return;
+            }
         };
-
 
         if let Some(lt) = self.0.last_mut() {
             match (lt.token.clone(), t.clone()) {
-        	    (Token::Number, Token::Identifier) => {
-        	        lt.token = Token::Identifier;
-        	        lt.span.str.push(c);
-        	        return;
-        	    },
+                (Token::Number, Token::Identifier) => {
+                    lt.token = Token::Identifier;
+                    lt.span.str.push(c);
+                    return;
+                },
 
-        	    (Token::Plus, Token::Number) | (Token::Dash, Token::Number) => {
-        	        lt.token = Token::Number;
-        	        lt.span.str.push(c);
-        	        return;
-        	    },
+                (Token::Plus, Token::Number) | (Token::Dash, Token::Number) => {
+                    lt.token = Token::Number;
+                    lt.span.str.push(c);
+                    return;
+                },
 
-        	    (Token::Number, Token::Dot)  => {
-        	        let there_dot = lt.span.str.chars().any(|lt_c| lt_c == '.');
-        	        if !there_dot {
-        	            lt.span.str.push(c);
-        	            return;
-        	        } else if let Some(lt_c) = lt.span.str.chars().last() && lt_c == '.' {
-        	            lt.span.str.pop();
-        	            self.0.push(LexToken{
-        	                token: Token::Dot,
-        	                span: StrSpan::new(".".to_string(), line, clmn - 1),
-        	            });
-        	        }
-        	    },
+                (Token::Number, Token::Dot)  => {
+                    let there_dot = lt.span.str.chars().any(|lt_c| lt_c == '.');
+                    if !there_dot {
+                        lt.span.str.push(c);
+                        return;
+                    } else if let Some(lt_c) = lt.span.str.chars().last() && lt_c == '.' {
+                        lt.span.str.pop();
+                        self.0.push(LexToken{
+                            token: Token::Dot,
+                            span: StrSpan::new(".".to_string(), line, clmn - 1),
+                        });
+                    }
+                },
 
-        	    (Token::Identifier, Token::Number) => {
-        	        lt.span.str.push(c);
-        	        return;
-        	    },
+                (Token::Identifier, Token::Number) => {
+                    lt.span.str.push(c);
+                    return;
+                },
 
-        	    _ => {}
-        	}
+                _ => {}
+            }
         }
 
         self.0.push(LexToken{
@@ -291,10 +288,12 @@ impl<'linespan> LexerOutput<'linespan> {
                 },
 
                 LexStat::MultiComment => {
-                    println!("Hello World!");
                     if current == '*' {
                         let Some(peek) = lchars.peek() else { return };
-                        if *peek == '/' { *stat = LexStat::Identifier; }
+                        if *peek == '/' {
+                            lchars.next();
+                            *stat = LexStat::Identifier;
+                        }
                     }
                     clmn += 1;
                     continue;
@@ -373,15 +372,15 @@ impl<'linespan> LexerOutput<'linespan> {
                 '/' => {
                     if let Some(peek) = lchars.peek() {match *peek {
                         '/' => {
-                            lchars.next();
                             self.tok_push(&Token::Comment, current, clmn, line);
+                            lchars.next();
                             break;
                         },
                         '*' => {
                             lchars.next();
                             self.tok_push(&Token::MultiComment, current, clmn, line);
                             *stat = LexStat::MultiComment;
-                            clmn += 1;
+                            clmn += 2;
                             continue;
                         },
                         _ => {},
@@ -400,7 +399,7 @@ impl<'linespan> LexerOutput<'linespan> {
                 '\t' => {
                     println!(
                         "[WARNING] You used tabs instead of spaces in line {}, column {clmn}. There will be issues in error tracking.\n",
-                        line.str
+                        line.num
                     );
                     for _ in 0..2 { self.tok_push(&Token::Space, current, clmn, line) }
                 },

@@ -153,10 +153,10 @@ pub enum CSTNode<'linespan> {
         indent_sz: usize,
         key: LexToken<'linespan>,
         equip_type: EquipType,
-        tool_name: Option<Box<CSTNode<'linespan>>>,
-        minus: Vec<LexToken<'linespan>>,
-        star: Vec<LexToken<'linespan>>,
-        plus: Vec<LexToken<'linespan>>,
+        tool_name: Vec<CSTNode<'linespan>>,
+        minus: Vec<CSTNode<'linespan>>,
+        star: Vec<CSTNode<'linespan>>,
+        plus: Vec<CSTNode<'linespan>>,
     },
 
     Enable{
@@ -392,6 +392,7 @@ impl<'linespan> CSTOutput<'linespan> {
                         x: if is_expect_newline { Token::Newline } else { Token::Identifier },
                         y: (*peek).clone(),
                     });
+                    ls_iter.next();
                 },
             }
             self.consume_space(&mut ls_iter);
@@ -777,8 +778,6 @@ impl<'linespan> CSTOutput<'linespan> {
                     };
                     self.consume_space(ls_iter);
 
-                    println!("expr1 = {:#?}\n", expr1);
-
                     let Some(dot1) = self.expect_consume_token_or(
                         Token::Dot, ls_iter,
                         CSTReport::EndOfFileDuring(Some(CSTNode::For{
@@ -793,8 +792,6 @@ impl<'linespan> CSTOutput<'linespan> {
                         self.consume_remaining(ls_iter);
                         return false;
                     };
-
-                    println!("dot1 = {:#?}", dot1);
 
                     let Some(dot2) = self.expect_consume_token_or(
                         Token::Dot, ls_iter,
@@ -813,11 +810,7 @@ impl<'linespan> CSTOutput<'linespan> {
                     };
                     self.consume_space(ls_iter);
 
-                    println!("dot2 = {:#?}", dot2);
-
                     let Some(expr2) = self.parse_special_for_expr(ls_iter) else { return false };
-
-                    println!("expr2 = {:#?}\n", expr2);
 
                     self.output.push(CSTNode::For{
                         indent_sz,
@@ -1727,7 +1720,7 @@ impl<'linespan> CSTOutput<'linespan> {
                     EquipType::Automatic
                 },
             },
-            tool_name: None,
+            tool_name: vec![],
             plus: vec![],
             star: vec![],
             minus: vec![],
@@ -1758,54 +1751,33 @@ impl<'linespan> CSTOutput<'linespan> {
                 },
 
                 Token::Identifier => {
-                    let _peek = (*peek).clone();
-                    if let Some(_tool_name) = tool_name {
-                        _tool_name.span.str.push(' ');
-                        _tool_name.concat(_peek);
-                        is_expect_space = true;
-                        ls_iter.next();
-                        continue;
-                    }
-                    *tool_name = Some(Box::new(CSTNode::Label{ name: _peek }));
-                    is_expect_space = true;
+                    let Some(expr) = self.parse_expr(ls_iter, 0, false) else { continue };
+                    tool_name.push(expr);
                     ls_iter.next();
                 },
 
                 Token::At => {
-                    let _peek = (*peek).clone();
-                    let Some(expr) = self.parse_special_equip_num(ls_iter) else { continue };
-                    if tool_name.is_some() {
-                        let expected_token = if plus.is_none() { Token::Plus }
-                            else if star.is_none() { Token::Star }
-                            else if minus.is_none() { Token::Dash }
-                            else { Token::Newline };
-                        self.errs.push(CSTReport::ExpectedXGotY{
-                            x: expected_token,
-                            y: _peek,
-                        });
-                        ls_iter.next();
-                        continue;
-                    }
-                    *tool_name = Some(Box::new(expr));
-                    is_expect_space = true;
+                    let Some(expr) = self.parse_expr(ls_iter, 0, false) else { continue };
+                    tool_name.push(expr);
+                    ls_iter.next();
                 },
 
                 Token::Plus => {
-                    let Some(expr) = self.parse_special_equip_num(ls_iter) else { 
+                    let Some(expr) = self.parse_special_equip_num(ls_iter) else {
                         continue
                     };
                     plus.push(expr);
                 },
 
                 Token::Star => {
-                    let Some(expr) = self.parse_special_equip_num(ls_iter) else { 
+                    let Some(expr) = self.parse_special_equip_num(ls_iter) else {
                         continue
                     };
                     star.push(expr);
                 },
 
                 Token::Dash => {
-                    let Some(expr) = self.parse_special_equip_num(ls_iter) else { 
+                    let Some(expr) = self.parse_special_equip_num(ls_iter) else {
                         continue
                     };
                     minus.push(expr);
@@ -1820,10 +1792,10 @@ impl<'linespan> CSTOutput<'linespan> {
 
                 _ => {
                     let expected_token: Token = if is_expect_space { Token::Space }
-                        else if tool_name.is_none() { Token::Identifier }
-                        else if star.is_none() { Token::Star }
-                        else if plus.is_none() { Token::Plus }
-                        else if minus.is_none() { Token::Dash }
+                        else if tool_name.is_empty() { Token::Identifier }
+                        else if star.is_empty() { Token::Star }
+                        else if plus.is_empty() { Token::Plus }
+                        else if minus.is_empty() { Token::Dash }
                         else { Token::Newline };
                     self.errs.push(CSTReport::ExpectedXGotY{
                         x: expected_token,
@@ -2228,7 +2200,7 @@ impl<'linespan> CSTOutput<'linespan> {
                         None => return Some(CSTNode::Label{ name: ltok.clone() }),
                     }
 
-                    let label = ltok;
+                    let mut label = ltok.clone();
                     label.span.str.push(' ');
 
                     loop {

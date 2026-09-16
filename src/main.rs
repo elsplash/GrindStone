@@ -1,7 +1,6 @@
 mod internals;
 use internals::{
     handle_args,
-    Token,
     LineSpan,
     LexerOutput,
     CSTOutput,
@@ -23,13 +22,6 @@ fn main() {
         let mut lex_output: LexerOutput = LexerOutput::new();
 
         if !lex_output.tokenize_file(file, &mut line_spans) { break; }
-
-        // for ltok in lex_output.0.iter() {
-        //     print!("{} ", ltok.token);
-        //     if ltok.token == Token::Newline {
-        //         println!("")
-        //     }
-        // }
 
     	let mut cst_tree = CSTOutput::new();
         if !cst_tree.parse_all(&mut lex_output) { is_end_early_by_err.push(file.clone()) }
