@@ -83,7 +83,24 @@ This should just be a list of things I should implement
 after I stopped working on the project, which is updated
 in [insert date] currently.
 
-> None at the moment.
+### The LineSpan lifetime issue
+
+This issue stems from `StrSpan` being coupled with the
+addresses of `LineSpan` in which it carries over to the
+other files.
+
+The solution to this is rather simple, which is to just
+replace it with another step in the Lexing process. To
+fetch all the lines, store them outside the loop, and
+tokenize from there.
+
+The current structure of course will not support this,
+the current structure will make the semantic analyzer
+inside the loop, which makes it limited to the current
+file.
+
+Fixing this issue will pull out the CST and AST variables
+outside the loop, and can be analyzed outside the loop.
 
 ## Review
 
