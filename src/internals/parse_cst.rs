@@ -154,9 +154,9 @@ pub enum CSTNode<'linespan> {
         key: LexToken<'linespan>,
         equip_type: EquipType,
         tool_name: Option<Box<CSTNode<'linespan>>>,
-        minus: Option<Box<CSTNode<'linespan>>>,
-        star: Option<Box<CSTNode<'linespan>>>,
-        plus: Option<Box<CSTNode<'linespan>>>,
+        minus: Vec<LexToken<'linespan>>,
+        star: Vec<LexToken<'linespan>>,
+        plus: Vec<LexToken<'linespan>>,
     },
 
     Enable{
@@ -1728,9 +1728,9 @@ impl<'linespan> CSTOutput<'linespan> {
                 },
             },
             tool_name: None,
-            plus: None,
-            star: None,
-            minus: None,
+            plus: vec![],
+            star: vec![],
+            minus: vec![],
         };
         let CSTNode::Equip{
             indent_sz: _, key: _, equip_type: _,
@@ -1759,15 +1759,10 @@ impl<'linespan> CSTOutput<'linespan> {
 
                 Token::Identifier => {
                     let _peek = (*peek).clone();
-                    if tool_name.is_some() {
-                        let expected_token = if plus.is_none() { Token::Plus }
-                            else if star.is_none() { Token::Star }
-                            else if minus.is_none() { Token::Dash }
-                            else { Token::Newline };
-                        self.errs.push(CSTReport::ExpectedXGotY{
-                            x: expected_token,
-                            y: _peek,
-                        });
+                    if let Some(_tool_name) = tool_name {
+                        _tool_name.span.str.push(' ');
+                        _tool_name.concat(_peek);
+                        is_expect_space = true;
                         ls_iter.next();
                         continue;
                     }
@@ -1796,68 +1791,24 @@ impl<'linespan> CSTOutput<'linespan> {
                 },
 
                 Token::Plus => {
-                    let _peek = (*peek).clone();
-                    let mut is_err = false;
-                    ls_iter.next();
-                    if plus.is_some() {
-                        let expected_token = if tool_name.is_none() { Token::Identifier }
-                            else if star.is_none() { Token::Star }
-                            else if minus.is_none() { Token::Dash }
-                            else { Token::Newline };
-                        self.errs.push(CSTReport::ExpectedXGotY{
-                            x: expected_token,
-                            y: _peek.clone(),
-                        });
-                        is_err = true;
-                    }
-                    self.consume_space(ls_iter);
-                    let Some(expr) = self.parse_special_equip_num(ls_iter) else { continue };
-                    if is_err { continue }
-                    *plus = Some(Box::new(expr.clone()));
-                    is_expect_space = true;
+                    let Some(expr) = self.parse_special_equip_num(ls_iter) else { 
+                        continue
+                    };
+                    plus.push(expr);
                 },
 
                 Token::Star => {
-                    let _peek = (*peek).clone();
-                    let mut is_err = false;
-                    ls_iter.next();
-                    if star.is_some() {
-                        let expected_token = if tool_name.is_none() { Token::Identifier }
-                            else if plus.is_none() { Token::Plus }
-                            else if minus.is_none() { Token::Dash }
-                            else { Token::Newline };
-                        self.errs.push(CSTReport::ExpectedXGotY{
-                            x: expected_token,
-                            y: _peek.clone(),
-                        });
-                        is_err = true;
-                    }
-                    self.consume_space(ls_iter);
-                    let Some(expr) = self.parse_special_equip_num(ls_iter) else { continue };
-                    if is_err { continue }
-                    *star = Some(Box::new(expr.clone()));
-                    is_expect_space = true;
+                    let Some(expr) = self.parse_special_equip_num(ls_iter) else { 
+                        continue
+                    };
+                    star.push(expr);
                 },
 
                 Token::Dash => {
-                    let _peek = (*peek).clone();
-                    let mut is_err = false;
-                    ls_iter.next();
-                    if minus.is_some() {
-                        let expected_token = if tool_name.is_none() { Token::Identifier }
-                            else if plus.is_none() { Token::Plus }
-                            else if star.is_none() { Token::Star }
-                            else { Token::Newline };
-                        self.errs.push(CSTReport::ExpectedXGotY{
-                            x: expected_token,
-                            y: _peek.clone(),
-                        });
-                        is_err = true;
-                    }
-                    let Some(expr) = self.parse_special_equip_num(ls_iter) else { continue };
-                    if is_err { continue }
-                    *minus = Some(Box::new(expr.clone()));
-                    is_expect_space = true;
+                    let Some(expr) = self.parse_special_equip_num(ls_iter) else { 
+                        continue
+                    };
+                    minus.push(expr);
                 },
 
                 Token::Comment | Token::Newline => {
@@ -2271,21 +2222,35 @@ impl<'linespan> CSTOutput<'linespan> {
 
                             Token::At if is_varfetch => return Some(CSTNode::Label{ name: ltok.clone() }),
 
-                            _ => {
-                                let _check = (*check).clone();
-                                ls_iter.next();
-                                self.errs.push(CSTReport::InvalidExpressionXAfterY{
-                                    x: _check,
-                                    y: Some(CSTNode::Label{ name: ltok.clone() }),
-                                });
-                                return None;
-                            },
+                            _ => {},
                         },
 
-                        None => {
-                            return Some(CSTNode::Label{ name: ltok.clone() })
-                        },
+                        None => return Some(CSTNode::Label{ name: ltok.clone() }),
                     }
+
+                    let label = ltok;
+                    label.span.str.push(' ');
+
+                    loop {
+                        match ls_iter.peek() {
+                            Some(peek) => match ltok.token {
+                                Token::Identifier => {
+                                    label.concat((*peek).clone());
+                                },
+
+                                Token::Continue | Token::Space => {
+                                    label.span.str.push(' ');
+                                },
+
+                                _ => break,
+                            },
+
+                            None => break,
+                        }
+                        ls_iter.next();
+                    }
+
+                    return Some(CSTNode::Label{ name: label.clone() });
                 },
 
                 Token::At => {
