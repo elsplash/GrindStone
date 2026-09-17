@@ -1,10 +1,10 @@
 mod internals;
 use internals::{
     handle_args,
-    // Token,
     LineSpan,
     LexerOutput,
     CSTOutput,
+    ASTBlock,
 };
 
 fn main() {
@@ -24,17 +24,8 @@ fn main() {
 
         if !lex_output.tokenize_file(file, &mut line_spans) { break; }
 
-        // for ltok in lex_output.0.iter() {
-        //     print!("{} ", ltok.token);
-        //     if ltok.token == Token::Newline { println!("") }
-        // }
-
     	let mut cst_tree = CSTOutput::new();
         if !cst_tree.parse_all(&mut lex_output) { is_end_early_by_err.push(file.clone()) }
-
-        // for node in cst_tree.output.iter() {
-        //     println!("{:#?}\n", node);
-        // }
 
     	for err in cst_tree.errs.iter() {
     	    println!("{err}\n");
@@ -42,7 +33,8 @@ fn main() {
 
         err_count += cst_tree.errs.len();
 
-        /* AST Will merge all CST Trees */
+        let ast_tree = ASTBlock::new();
+
         /* ast_tree.merge(cst_tree); */
     }
 

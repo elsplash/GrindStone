@@ -2508,7 +2508,7 @@ impl<'linespan> CSTOutput<'linespan> {
                         if next_tok.token == Token::Quote {
                             *rquot = Some((*next_tok).clone());
                             ls_iter.next();
-                            return Some(quot);
+                            break;
                         } else if next_tok.token == Token::Newline {
                             ls_iter.next();
                             self.errs.push(CSTReport::UnclosedDelimiter(quot));
@@ -2521,6 +2521,47 @@ impl<'linespan> CSTOutput<'linespan> {
                         };
                         stok.concat((*next_tok).clone());
                         ls_iter.next();
+                    }
+
+                    let opt_space: LexToken<'linespan>;
+
+                    match ls_iter.peek() {
+                        Some(peek) => match peek.token {
+                            Token::Plus => {
+                                let _peek = (*peek).clone();
+                                ls_iter.next();
+                                self.consume_space(ls_iter);
+                                return self.parse_bin_op(ls_iter, quot, _peek);
+                            },
+
+                            Token::Space | Token::Continue | Token::MultiComment
+                                => {
+                                    opt_space = (*peek).clone();
+                                    ls_iter.next();
+                                },
+
+                            _ => return Some(quot),
+                        },
+
+                        None => return Some(quot),
+                    }
+
+                    match ls_iter.peek() {
+                        Some(peek) if peek.token == Token::Plus => {
+                            let _peek = (*peek).clone();
+                            ls_iter.next();
+                            self.consume_space(ls_iter);
+                            return self.parse_bin_op(ls_iter, quot, _peek);
+                        },
+
+                        _ => {
+                            self.errs.push(CSTReport::ExpectedXGotY{
+                                x: Token::Newline,
+                                y: opt_space,
+                            });
+                            self.consume_remaining(ls_iter);
+                            return Some(quot)
+                        },
                     }
                 },
 
