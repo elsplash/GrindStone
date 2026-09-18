@@ -20,13 +20,13 @@ use crate::internals::{
 };
 
 #[derive(Clone, Debug)]
-pub enum OpType {
+pub enum CSTOpType {
     Increment,
     Decrement,
     AddAssign,
-    MinusAssign,
-    TimesAssign,
-    DivideAssign,
+    SubAssign,
+    MultAssign,
+    DivAssign,
 }
 
 #[derive(Clone, Debug)]
@@ -111,7 +111,7 @@ pub enum CSTNode<'linespan> {
     VarMutator{
         indent_sz: usize,
         name: Option<LexToken<'linespan>>,
-        operator: Option<OpType>,
+        operator: Option<CSTOpType>,
         amount: Option<Box<CSTNode<'linespan>>>,
     },
 
@@ -224,10 +224,13 @@ pub enum CSTNode<'linespan> {
 
 #[derive(Debug)]
 pub enum IntErrID {
-    FetchCSTNode{ code: u8 },
-    ExpectedGuarantee{ code: u8 },
+    FetchCSTNode{ code: u16 },
+    ExpectedGuarantee{ code: u16 },
 }
 
+/*
+ * TODO: After doing all AST parsing errors, you may remove some of these now.
+ */
 #[derive(Debug)]
 pub enum CSTReport<'linespan> {
     InternalError(IntErrID),
@@ -868,7 +871,7 @@ impl<'linespan> CSTOutput<'linespan> {
                                 CSTReport::EndOfFileDuring(Some(CSTNode::VarMutator{
                                     indent_sz,
                                     name: None,
-                                    operator: Some(OpType::Increment),
+                                    operator: Some(CSTOpType::Increment),
                                     amount: None,
                                 }))
                             ) else {
@@ -878,7 +881,7 @@ impl<'linespan> CSTOutput<'linespan> {
                             self.output.push(CSTNode::VarMutator{
                                 indent_sz,
                                 name: Some(ident.clone()),
-                                operator: Some(OpType::Increment),
+                                operator: Some(CSTOpType::Increment),
                                 amount: None,
                             });
                             ls_iter.next();
@@ -904,7 +907,7 @@ impl<'linespan> CSTOutput<'linespan> {
                                 CSTReport::EndOfFileDuring(Some(CSTNode::VarMutator{
                                     indent_sz,
                                     name: None,
-                                    operator: Some(OpType::Decrement),
+                                    operator: Some(CSTOpType::Decrement),
                                     amount: None,
                                 }))
                             ) else {
@@ -914,7 +917,7 @@ impl<'linespan> CSTOutput<'linespan> {
                             self.output.push(CSTNode::VarMutator{
                                 indent_sz,
                                 name: Some(ident.clone()),
-                                operator: Some(OpType::Decrement),
+                                operator: Some(CSTOpType::Decrement),
                                 amount: None,
                             });
                             ls_iter.next();
@@ -969,7 +972,7 @@ impl<'linespan> CSTOutput<'linespan> {
                     Token::Plus => {
                         self.output.push(CSTNode::VarMutator{
                             indent_sz, name: Some(name.clone()),
-                            operator: Some(OpType::Increment),
+                            operator: Some(CSTOpType::Increment),
                             amount: None,
                         });
                         ls_iter.next();
@@ -980,7 +983,7 @@ impl<'linespan> CSTOutput<'linespan> {
                         let Some(expr) = self.parse_expr(ls_iter, 0, false) else { return false };
                         self.output.push(CSTNode::VarMutator{
                             indent_sz, name: Some(name.clone()),
-                            operator: Some(OpType::AddAssign),
+                            operator: Some(CSTOpType::AddAssign),
                             amount: Some(Box::new(expr)),
                         });
                         ls_iter.next();
@@ -1014,7 +1017,7 @@ impl<'linespan> CSTOutput<'linespan> {
                     Token::Dash => {
                         self.output.push(CSTNode::VarMutator{
                             indent_sz, name: Some(name.clone()),
-                            operator: Some(OpType::Decrement),
+                            operator: Some(CSTOpType::Decrement),
                             amount: None,
                         });
                         ls_iter.next();
@@ -1037,7 +1040,7 @@ impl<'linespan> CSTOutput<'linespan> {
                         }
                         self.output.push(CSTNode::VarMutator{
                             indent_sz, name: Some(name.clone()),
-                            operator: Some(OpType::MinusAssign),
+                            operator: Some(CSTOpType::SubAssign),
                             amount: Some(Box::new(expr)),
                         });
                     },
@@ -1080,7 +1083,7 @@ impl<'linespan> CSTOutput<'linespan> {
 
                 self.output.push(CSTNode::VarMutator{
                     indent_sz, name: Some(name.clone()),
-                    operator: Some(OpType::TimesAssign),
+                    operator: Some(CSTOpType::MultAssign),
                     amount: Some(Box::new(expr)),
                 });
 
@@ -1115,7 +1118,7 @@ impl<'linespan> CSTOutput<'linespan> {
 
                 self.output.push(CSTNode::VarMutator{
                     indent_sz, name: Some(name.clone()),
-                    operator: Some(OpType::DivideAssign),
+                    operator: Some(CSTOpType::DivAssign),
                     amount: Some(Box::new(expr)),
                 });
 

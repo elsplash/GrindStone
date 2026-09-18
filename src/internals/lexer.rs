@@ -35,8 +35,8 @@ enum LexStat {
 
 #[derive(Clone, Debug)]
 pub struct LineSpan {
-    str: String,
-    num: usize,
+    pub str: String,
+    pub num: usize,
 }
 
 #[derive(Clone, Debug)]
