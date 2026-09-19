@@ -64,7 +64,19 @@ pub enum ASTNode<'linespan> {
 
     Ascii(Vec<LineSpan>),
 
-    // ...
+    Func{
+        name: StrSpan<'linespan>,
+        paren: Box<ASTNode<'linespan>>,
+    },
+
+    VarDecl(Box<ASTNode<'linespan>>),
+    FuncDecl(Box<ASTNode<'linespan>>),
+
+    If(Box<ASTNode<'linespan>>),
+    Else(Option<Box<ASTNode<'linespan>>>),
+
+    Import(Box<ASTNode<'linespan>>),
+    New(Box<ASTNode<'linespan>>),
 }
 
 pub struct ASTBlock<'linespan> {
@@ -131,6 +143,25 @@ impl ASTOpType {
     }
 }
 
+/*
+ * TODO LIST 2000:
+ * Since I cannot keep track of everything...
+ * (Should be done in order)
+ *
+ * [ASTBlock] -> 1. Do the Equip Node first.
+ *               2. Boring nodes (Enable, Brew, etc)
+ *               3. For loop
+ *               4. The main AST Block parser caller
+ *
+ * [ASTOutput] -> 1. We only need a public function, not an implementation.
+ *
+ * [ASTNode] -> 1. StrSpan fetcher for each node, recursive descent.
+ * 				2. LineSpan fetcher.
+ *				3. ASTReport helpers, like replace, remove, etc.
+ *
+ * [ASTReport] -> 1. Replace all the MissingXInY with special cases, and run helper code for them.
+ *				  2. Replace the CSTNode placeholders.
+ */
 impl<'linespan> ASTBlock<'linespan> {
     pub fn new() -> ASTBlock<'linespan> {
         ASTBlock{
@@ -138,6 +169,146 @@ impl<'linespan> ASTBlock<'linespan> {
             block: Vec::new(),
             errs: Vec::new(),
         }
+    }
+
+    /* NOTE: The else parse function is small enough to inline. */
+
+    fn parse_if_stmnt(&mut self, cnode: CSTNode<'linespan>) -> Option<ASTBlock<'linespan>> {
+        let _cnode = cnode.clone();
+        let CSTNode::If{
+            key: _,
+            indent_sz,
+            bin_op,
+        } = cnode else {
+            self.errs.push(ASTReport::InternalError(100));
+            return None;
+        };
+
+        if self.indent_lv < indent_sz { return None }
+        else if self.indent_lv > indent_sz {
+            return ASTBlock{
+                indent_lv: indent_sz,
+                block: Vec::new(),
+                errs: Vec::new(),
+            }.parse_if_stmnt(_cnode);
+        }
+
+        let Some(_bin_op) = bin_op else {
+            self.errs.push(ASTReport::MissingXInY{
+                x: "Check".to_string(),
+                y: _cnode,
+            });
+            return None;
+        };
+
+        let Some(__bin_op) = self.parse_expr(*_bin_op) else { return None };
+
+        self.block.push(ASTNode::If(Box::new(__bin_op)));
+
+        None
+    }
+
+    fn parse_var_decl(&mut self, cnode: CSTNode<'linespan>) -> Option<ASTBlock<'linespan>> {
+        let _cnode = cnode.clone();
+        let CSTNode::VarDecl{
+            key: _,
+            indent_sz,
+            name,
+            equal,
+            def,
+        } = cnode else {
+            self.errs.push(ASTReport::InternalError(101));
+            return None;
+        };
+
+        if self.indent_lv < indent_sz { return None }
+        else if self.indent_lv > indent_sz {
+            return ASTBlock{
+                indent_lv: indent_sz,
+                block: Vec::new(),
+                errs: Vec::new(),
+            }.parse_var_decl(_cnode);
+        }
+
+        let Some(_name) = name else {
+            self.errs.push(ASTReport::MissingXInY{
+                x: "Name".to_string(),
+                y: _cnode,
+            });
+            return None;
+        };
+
+        if equal.is_none() {
+            self.errs.push(ASTReport::MissingXInY{
+                x: "Equal".to_string(),
+                y: _cnode.clone(),
+            });
+        }
+
+        let Some(_def) = def else {
+            self.errs.push(ASTReport::MissingXInY{
+                x: "Definition".to_string(),
+                y: _cnode,
+            });
+            return None;
+        };
+
+        let Some(__def) = self.parse_expr(*_def) else { return None };
+
+        self.block.push(ASTNode::VarDecl(Box::new(ASTNode::BinOp{
+            lhs: Box::new(ASTNode::Label(_name.span)),
+            op: ASTOpType::Equal,
+            rhs: Box::new(__def),
+        })));
+
+        None
+    }
+
+    fn parse_func_decl(&mut self, cnode: CSTNode<'linespan>) -> Option<ASTBlock<'linespan>> {
+        let _cnode = cnode.clone();
+        let CSTNode::FuncDecl{
+            key: _,
+            indent_sz,
+            name,
+            paren,
+        } = cnode else {
+            self.errs.push(ASTReport::InternalError(102));
+            return None;
+        };
+
+        if self.indent_lv < indent_sz { return None }
+        else if self.indent_lv > indent_sz {
+            return ASTBlock{
+                indent_lv: indent_sz,
+                block: Vec::new(),
+                errs: Vec::new(),
+            }.parse_func_decl(_cnode);
+        }
+
+        let Some(_name) = name else {
+            self.errs.push(ASTReport::MissingXInY{
+                x: "Name".to_string(),
+                y: _cnode,
+            });
+            return None;
+        };
+
+        let Some(_paren) = paren else {
+            self.errs.push(ASTReport::MissingXInY{
+                x: "Parenthesis".to_string(),
+                y: _cnode,
+            });
+            return None;
+        };
+
+        let Some(__paren) = self.parse_expr(*_paren) else { return None };
+
+        self.block.push(ASTNode::FuncDecl(Box::new(ASTNode::Func{
+            name: _name.span,
+            paren: Box::new(__paren),
+        })));
+
+        None
     }
 
     fn parse_var_mutator(&mut self, cnode: CSTNode<'linespan>) -> Option<ASTBlock<'linespan>> {
@@ -148,13 +319,12 @@ impl<'linespan> ASTBlock<'linespan> {
             operator,
             amount,
         } = cnode else {
-            self.errs.push(ASTReport::InternalError(100));
+            self.errs.push(ASTReport::InternalError(103));
             return None;
         };
 
-        if self.indent_lv < indent_sz {
-            return None;
-        } else if self.indent_lv > indent_sz {
+        if self.indent_lv < indent_sz { return None }
+        else if self.indent_lv > indent_sz {
             return ASTBlock{
                 indent_lv: indent_sz,
                 block: Vec::new(),
@@ -215,7 +385,7 @@ impl<'linespan> ASTBlock<'linespan> {
 
             CSTNode::Number{ num } => {
                 let Ok(val) = num.span.str.parse::<f64>() else {
-                    self.errs.push(ASTReport::InternalError(101));
+                    self.errs.push(ASTReport::InternalError(104));
                     return None;
                 };
                 return Some(ASTNode::Number{
@@ -278,8 +448,50 @@ impl<'linespan> ASTBlock<'linespan> {
                 return self.parse_expr(*_var);
             },
 
+            CSTNode::BinOp{
+                lhs: _,
+                op: _,
+                rhs: _,
+            } => return self.parse_bin_op(cnode),
+
+            CSTNode::Ascii{
+                key_start: _,
+                lines: _,
+                key_end: _,
+            } => return self.parse_ascii(cnode),
+
+            CSTNode::TableAccess{
+                label: _,
+                brack: _,
+            } => return self.parse_table_access(cnode),
+
+            CSTNode::VarMethod{
+                indent_sz: _,
+                var: _,
+                dot: _,
+                method: _,
+            } => return self.parse_var_method(cnode),
+
+            CSTNode::FuncCall{
+                indent_sz: _,
+                name: _,
+                paren: _,
+            } => return self.parse_func(cnode),
+
+            CSTNode::Import{
+                indent_sz: _,
+                key: _,
+                path: _,
+            } => return self.parse_import(cnode),
+
+            CSTNode::New{
+                indent_sz: _,
+                key: _,
+                path: _,
+            } => return self.parse_new(cnode),
+
             _ => {
-                self.errs.push(ASTReport::InternalError(102));
+                self.errs.push(ASTReport::InternalError(105));
                 return None;
             }
         }
@@ -291,7 +503,7 @@ impl<'linespan> ASTBlock<'linespan> {
             contents,
             rparen: _,
         } = cnode else {
-            self.errs.push(ASTReport::InternalError(103));
+            self.errs.push(ASTReport::InternalError(106));
             return None;
         };
 
@@ -302,7 +514,7 @@ impl<'linespan> ASTBlock<'linespan> {
                 var,
                 comma,
             } = node else {
-                self.errs.push(ASTReport::InternalError(104));
+                self.errs.push(ASTReport::InternalError(107));
                 return None;
             };
             if comma.is_none() {
@@ -331,7 +543,7 @@ impl<'linespan> ASTBlock<'linespan> {
             contents,
             rbrack: _,
         } = cnode else {
-            self.errs.push(ASTReport::InternalError(105));
+            self.errs.push(ASTReport::InternalError(108));
             return None;
         };
 
@@ -342,7 +554,7 @@ impl<'linespan> ASTBlock<'linespan> {
                 var,
                 comma,
             } = node else {
-                self.errs.push(ASTReport::InternalError(106));
+                self.errs.push(ASTReport::InternalError(109));
                 return None;
             };
             if comma.is_none() {
@@ -372,14 +584,14 @@ impl<'linespan> ASTBlock<'linespan> {
             op,
             rhs,
         } = cnode else {
-            self.errs.push(ASTReport::InternalError(107));
+            self.errs.push(ASTReport::InternalError(110));
             return None;
         };
 
         let Some(_lhs) = self.parse_expr(*lhs) else { return None };
 
         let Some(ast_op) = ASTOpType::default().translate_ltok(op) else {
-            self.errs.push(ASTReport::InternalError(108));
+            self.errs.push(ASTReport::InternalError(111));
             return None;
         };
 
@@ -407,7 +619,7 @@ impl<'linespan> ASTBlock<'linespan> {
             var,
             at2,
         } = cnode else {
-            self.errs.push(ASTReport::InternalError(109));
+            self.errs.push(ASTReport::InternalError(112));
             return None;
         };
 
@@ -442,6 +654,7 @@ impl<'linespan> ASTBlock<'linespan> {
         Some(ASTNode::VarFetch{var: Box::new(__var), fetch: at1.span})
     }
 
+    /* NOTE: For future implementation, please check the indent_sz */
     fn parse_var_method(&mut self, cnode: CSTNode<'linespan>) -> Option<ASTNode<'linespan>> {
         let _cnode = cnode.clone();
         let CSTNode::VarMethod{
@@ -468,12 +681,12 @@ impl<'linespan> ASTBlock<'linespan> {
             name,
             paren,
         } = *_method else {
-            self.errs.push(ASTReport::InternalError(110));
+            self.errs.push(ASTReport::InternalError(113));
             return None;
         };
 
         let Some(_paren) = paren else {
-            self.errs.push(ASTReport::InternalError(111));
+            self.errs.push(ASTReport::InternalError(114));
             return None;
         };
         let Some(__paren) = self.parse_expr(*_paren) else { return None };
@@ -491,7 +704,7 @@ impl<'linespan> ASTBlock<'linespan> {
             label,
             brack,
         } = cnode else {
-            self.errs.push(ASTReport::InternalError(112));
+            self.errs.push(ASTReport::InternalError(115));
             return None;
         };
 
@@ -518,7 +731,7 @@ impl<'linespan> ASTBlock<'linespan> {
             lines,
             key_end,
         } = cnode else {
-            self.errs.push(ASTReport::InternalError(113));
+            self.errs.push(ASTReport::InternalError(116));
             return None;
         };
 
@@ -531,4 +744,84 @@ impl<'linespan> ASTBlock<'linespan> {
 
         Some(ASTNode::Ascii(lines))
     }
+
+    /* NOTE: For future implementation, please check the indent_sz */
+    fn parse_func(&mut self, cnode: CSTNode<'linespan>) -> Option<ASTNode<'linespan>> {
+        let _cnode = cnode.clone();
+        let CSTNode::FuncCall{
+            indent_sz: _,
+            name,
+            paren,
+        } = cnode else {
+            self.errs.push(ASTReport::InternalError(117));
+            return None;
+        };
+
+        let Some(_paren) = paren else {
+            self.errs.push(ASTReport::MissingXInY{
+                x: "Parenthesis".to_string(),
+                y: _cnode,
+            });
+            return None;
+        };
+
+        let Some(__paren) = self.parse_expr(*_paren) else { return None };
+
+        Some(ASTNode::Func{
+            name: name.span,
+            paren: Box::new(__paren),
+        })
+    }
+
+    /* NOTE: For future implementation, please check the indent_sz */
+    fn parse_import(&mut self, cnode: CSTNode<'linespan>) -> Option<ASTNode<'linespan>> {
+        let _cnode = cnode.clone();
+        let CSTNode::Import{
+            indent_sz: _,
+            key: _,
+            path,
+        } = cnode else {
+            self.errs.push(ASTReport::InternalError(118));
+            return None;
+        };
+
+        let Some(_path) = path else {
+            self.errs.push(ASTReport::MissingXInY{
+                x: "Path".to_string(),
+                y: _cnode.clone(),
+            });
+            return None;
+        };
+
+        let Some(__path) = self.parse_expr(*_path) else { return None };
+
+        Some(ASTNode::Import(Box::new(__path)))
+    }
+
+    /* NOTE: For future implementation, please check the indent_sz */
+    fn parse_new(&mut self, cnode: CSTNode<'linespan>) -> Option<ASTNode<'linespan>> {
+        let _cnode = cnode.clone();
+        let CSTNode::New{
+            indent_sz: _,
+            key: _,
+            path,
+        } = cnode else {
+            self.errs.push(ASTReport::InternalError(119));
+            return None;
+        };
+
+        let Some(_path) = path else {
+            self.errs.push(ASTReport::MissingXInY{
+                x: "Path".to_string(),
+                y: _cnode.clone(),
+            });
+            return None;
+        };
+
+        let Some(__path) = self.parse_expr(*_path) else { return None };
+
+        Some(ASTNode::New(Box::new(__path)))
+    }
 }
+
+/* Might need some functions in ASTNode for the analyzer */
