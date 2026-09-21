@@ -102,6 +102,16 @@ file.
 Fixing this issue will pull out the CST and AST variables
 outside the loop, and can be analyzed outside the loop.
 
+### File organization
+
+This project was inheritly big, given that a linter's
+complexity. Though at the time, this project I thought
+of was kind of simple to implement, though I was quickly
+proven wrong.
+
+This could be resolved by the sorting of the files in a
+folder.
+
 ## Review
 
 > TBA

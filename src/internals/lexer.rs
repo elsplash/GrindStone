@@ -54,11 +54,54 @@ pub struct LexToken<'linespan> {
 
 pub struct LexerOutput<'linespan>(pub Vec<LexToken<'linespan>>);
 
+#[derive(Clone, Copy)]
+pub struct Span {
+    start_line: usize,
+    start_clmn: usize,
+
+    end_line: usize,
+    end_clmn: usize,
+}
+
 impl LineSpan {
     pub fn new(string: String, num: usize) -> LineSpan {
         LineSpan{
             str: string,
             num: num,
+        }
+    }
+
+    pub fn to(&self, end: Option<LineSpan>) -> Span {
+        match end {
+            Some(_end) => {
+                let start_line = self.num;
+                let start_clmn = 0;
+
+                let end_line = _end.num;
+                let end_clmn = _end.str.chars().count();
+
+				return Span{
+                    start_line,
+                    start_clmn,
+                    end_line,
+                    end_clmn,
+                };
+            },
+
+            None => {
+                let start_line = self.num;
+                let start_clmn = 0;
+
+                let end_line = start_line;
+                let end_clmn = self.str.chars().count();
+
+                return Span{
+                    start_line,
+                    start_clmn,
+                    end_line,
+                    end_clmn,
+                };
+            },
         }
     }
 
@@ -76,6 +119,23 @@ impl<'linespan> StrSpan<'linespan> {
             str: s,
             line: line,
             clmn: clmn_start,
+        }
+    }
+
+
+    pub fn to(&self, end: StrSpan) -> Span {
+        let start_line = self.line.num;
+        let start_clmn = self.str.chars().count();
+        
+        let end_line = end.line.num;
+        let end_clmn = end.str.chars().count();
+
+        Span{
+            start_line,
+            start_clmn,
+
+            end_line,
+            end_clmn,
         }
     }
 }
