@@ -75,42 +75,40 @@ fixes the naming conventions for you.
 
 ## Usage
 
-> IN DEVELOPMENT!
+### BUILDING / INSTALLING
+
+You may compile from source, by just building it.
+
+```sh
+cargo build -r
+```
+
+Or you may install pre-compiled executables in the
+releases tab.
+
+### USING GRINDSTONE
+
+After installing GrindStone, you may use the `--help`
+flag to see what flags are available, and how to
+use them.
+
+When you're ready to know the errors of your
+Stonescript code, you may run:
+
+```sh
+./GrindStone yourcode.txt # Linux/MacOS
+
+GrindStone yourcode.txt # Windows
+```
+
+Now you'll see your beautiful errors, without opening the
+app.
 
 ## Future implementations
 
 This should just be a list of things I should implement
 after I stopped working on the project, which is updated
 in [insert date] currently.
-
-### The LineSpan lifetime issue
-
-This issue stems from `StrSpan` being coupled with the
-addresses of `LineSpan` in which it carries over to the
-other files.
-
-The solution to this is rather simple, which is to just
-replace it with another step in the Lexing process. To
-fetch all the lines, store them outside the loop, and
-tokenize from there.
-
-The current structure of course will not support this,
-the current structure will make the semantic analyzer
-inside the loop, which makes it limited to the current
-file.
-
-Fixing this issue will pull out the CST and AST variables
-outside the loop, and can be analyzed outside the loop.
-
-### File organization
-
-This project was inheritly big, given that a linter's
-complexity. Though at the time, this project I thought
-of was kind of simple to implement, though I was quickly
-proven wrong.
-
-This could be resolved by the sorting of the files in a
-folder.
 
 ## Review
 
