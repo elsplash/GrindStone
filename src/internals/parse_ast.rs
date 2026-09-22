@@ -258,13 +258,8 @@ pub fn parse_all<'linespan>(ast_output: &mut ASTOutput<'linespan>, cst_output: &
  * Since I cannot keep track of everything...
  * (Should be done in order)
  *
- * [ASTNode] -> 1. StrSpan fetcher for each node, recursive descent.
- *              2. LineSpan fetcher.
- *
- * [CSTNode] -> 1. ASTReport helpers, like replace, remove, etc.
- *
  * [ASTReport] -> 1. Replace all the MissingXInY with special cases, and run helper code for them.
- *				  2. Replac) e the CSTNode placeholders.
+ *                2. Replac) e the CSTNode placeholders.
  */
 impl<'linespan> ASTBlock<'linespan> {
     pub fn new() -> ASTBlock<'linespan> {
