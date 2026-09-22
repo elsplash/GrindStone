@@ -115,7 +115,7 @@ pub enum CSTNode<'linespan> {
         operator: Option<CSTOpType>,
         op_tok: Option<LexToken<'linespan>>,
         amount: Option<Box<CSTNode<'linespan>>>,
-    }, /* bookmark:reference */
+    },
 
     TableAccess{
         label: LexToken<'linespan>,
@@ -1229,7 +1229,6 @@ impl<'linespan> CSTOutput<'linespan> {
                 };
                 let _ = bin_op_node;
 
-                /* bookmark */
                 let varmut_node = CSTNode::VarMutator{
                     indent_sz,
                 };
