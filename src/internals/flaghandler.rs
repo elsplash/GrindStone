@@ -61,6 +61,10 @@ Sharpen your MindStone.
 A tool that checks for errors, outside of the game.
 And also lints and formats.
 
+- Command -
+./GrindStone YOURFILE.txt
+[-h/--help] [-L NUM/--linter-mode NUM] [-F NUM/--formatter-mode NUM] [-t NUM/--tab-spaces NUM] [-d/--debug]
+
 - Flags -
     -h   | --help             : Prints this message.
     -L#  | --linter-mode #    : Sets the linter mode, by a number, or name of the mode.
@@ -104,7 +108,7 @@ And also lints and formats.
                 },
             },
 
-            (num, FlagState::FMTMode) => match num {
+            (num, FlagState::FMTMode) => match num.to_lowercase().as_str() {
                 "0" => gsc.fmt_mode = FormatterMode::Off, /* Default, but for later versions maybe not. */
                 "1" => gsc.fmt_mode = FormatterMode::Normal,
                 "2" => gsc.fmt_mode = FormatterMode::Strict,
