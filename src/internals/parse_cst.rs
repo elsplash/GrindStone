@@ -255,7 +255,7 @@ impl<'linespan> Display for CSTReport<'linespan> {
             CSTReport::InternalError(id) => {
                 err = "[ERROR] Internal Error, this is not your fault.".to_string();
                 line = ";)".to_string();
-                help_message = format!("[HINT] You may report this to the devs");
+                help_message = format!("[HINT] You may report this to the devs ( ERRCODE: {id} )");
             },
 
             CSTReport::ExpectedXGotY{
@@ -369,14 +369,14 @@ impl<'linespan> CSTNode<'linespan> {
                 if let Some(_def) = def { output.extend(_def.fetch_all_strspan()) }
             }
 
-            CSTNode::VarElement{ var, dot, element } => {
-                output.extend(var,fetch_all_strspan());
+            CSTNode::VarElement{ var, dot, element, .. } => {
+                output.extend(var.fetch_all_strspan());
                 output.push(dot.span.clone());
                 if let Some(_element) = element { output.extend(_element.fetch_all_strspan()) }
             },
 
-            CSTNode::VarMethod{ var, dot, method } => {
-                output.extend(var,fetch_all_strspan());
+            CSTNode::VarMethod{ var, dot, method, .. } => {
+                output.extend(var.fetch_all_strspan());
                 output.push(dot.span.clone());
                 if let Some(_method) = method { output.extend(_method.fetch_all_strspan()) }
             },
@@ -388,7 +388,7 @@ impl<'linespan> CSTNode<'linespan> {
             },
 
             CSTNode::VarMutator{ name, op_tok, amount, .. } => {
-                output.push(name.span.clone());
+                push_if_some_ltok(&mut output, name);
                 push_if_some_ltok(&mut output, op_tok);
                 if let Some(_amount) = amount { output.extend(_amount.fetch_all_strspan()) }
             },
@@ -401,10 +401,10 @@ impl<'linespan> CSTNode<'linespan> {
             CSTNode::FuncDecl{ key, name, paren, .. } => {
                 output.push(key.span.clone());
                 push_if_some_ltok(&mut output, name);
-                if Some(_paren) = paren { output.extend(_paren.fetch_all_strspan()) }
+                if let Some(_paren) = paren { output.extend(_paren.fetch_all_strspan()) }
             }
 
-            CSTNode::FuncCall{ name paren, .. } => {
+            CSTNode::FuncCall{ name, paren, .. } => {
                 output.push(name.span.clone());
                 if let Some(_paren) = paren { output.extend(_paren.fetch_all_strspan()) }
             },
@@ -414,8 +414,8 @@ impl<'linespan> CSTNode<'linespan> {
                 if let Some(_bin_op) = bin_op { output.extend(_bin_op.fetch_all_strspan()) }
             },
 
-            CSTNod::Else{ colon, if_stmnt, .. } => {
-                output.push(key.span.clone());
+            CSTNode::Else{ colon, if_stmnt, .. } => {
+                output.push(colon.span.clone());
                 if let Some(_if_stmnt) = if_stmnt { output.extend(_if_stmnt.fetch_all_strspan()) }
             },
 
@@ -492,12 +492,12 @@ impl<'linespan> CSTNode<'linespan> {
             } => {
                 output.push(key.span.clone());
 
-                if let Some(_spcl_key) = spcl_key { output.extend(_spcl_key.fetch_all_strspan()) }
+                push_if_some_ltok(&mut output, spcl_key);
                 if let Some(_spcl_x_pos) = spcl_x_pos { output.extend(_spcl_x_pos.fetch_all_strspan()) }
                 if let Some(_spcl_y_pos) = spcl_y_pos { output.extend(_spcl_y_pos.fetch_all_strspan()) }
 
-                if let Some(_spcl_clr_key) = spcl_clr_key { output.extend(spcl_clr_key.fetch_all_strspan()) }
-                if let Some(_spcl_clr_val) = spcl_clr_val { output.extend(spcl_clr_val.fetch_all_strspan()) }
+                push_if_some_ltok(&mut output, spcl_clr_key);
+                push_if_some_ltok(&mut output, spcl_clr_val);
 
                 for node in contents.iter() { output.extend(node.fetch_all_strspan()) }
             },
@@ -522,22 +522,22 @@ impl<'linespan> CSTNode<'linespan> {
 
             CSTNode::Number{ num } => output.push(num.span.clone()),
             CSTNode::Label{ name } => output.push(name.span.clone()),
-        },
+        }
 
         output
     }
 
     pub fn fetch_merge_strspan(&self) -> Option<StrSpan> {
-        let spans = self.fetch_all_strspan();
-        let s_iter = spans.iter();
-        let Some(span) = s_iter.next_mut() else { return None };
+        let mut spans = self.fetch_all_strspan();
+        let mut s_iter = spans.iter_mut();
+        let Some(span) = s_iter.next() else { return None };
 
         loop {
             let Some(s_append) = s_iter.next() else { break };
             span.str += s_append.str.as_str();
         }
 
-        Some(span)
+        Some(span.clone())
     }
 
     pub fn fetch_linespan(&self) -> Option<LineSpan> {
@@ -754,44 +754,37 @@ impl<'linespan> CSTOutput<'linespan> {
                 },
 
                 "brew" => {
-                    let brew_node = CSTNode::Brew{
-                        indent_sz, key: name.clone, ingr1: None, plus: None, ingr2: None,
-                    };
-
-                    let CSTNode::Brew{
-                        ref mut ingr1, ref mut plus, ref mut ingr2,
-                    } = brew_node else {
-                        self.errs.push(CSTReport::InternalError(202));
-                        return false;
-                    };
-
+                    /* NOTE: WE ARE HERE! We should make it so that the node's elements are binded beforehand. */
                     self.expect_consume_token_or(
                         Token::Space, ls_iter,
-                        CSTReport::EndOfFileDuring(Some())
+                        CSTReport::EndOfFileDuring(Some(CSTNode::Brew{
+                            indent_sz, key: name.clone(), ingr1: None, plus: None, ingr2: None,
+                        }))
                     );
 
                     let Some(_ingr1) = self.parse_expr(ls_iter, 0, false) else {
-                        self.output.push(brew_node);
+                        self.output.push(CSTNode::Brew{
+                            indent_sz, key: name.clone(), ingr1: None, plus: None, ingr2: None,
+                        });
                         return true;
                     };
-                    *ingr1 = Some(Box::new(_ingr1));
 
                     self.consume_space(ls_iter);
                     let Some(_plus) = self.expect_consume_token_or(
                         Token::Plus, ls_iter,
                         CSTReport::EndOfFileDuring(Some(brew_node))
                     ) else {
-                        self.output.push(brew_node);
+                        self.output.push(CSTNode::Brew{
+                            indent_sz, key: name.clone(), ingr1: Some(Box::new(_ingr1)), plus: None, ingr2: None,
+                        });
                         return true;
                     };
-                    *plus = Some(_plus);
 
                     self.consume_space(ls_iter);
                     let Some(_ingr2) = self.parse_expr(ls_iter, 0, false) else {
-                        self.output.push(brew_node);
+                        self.output.push(CSTNode::Brew{indent_sz, key, ingr1, plus, ingr2});
                         return true;
                     };
-                    *ingr2 = Some(Box::new(_ingr2));
 
                     self.output.push(brew_node);
                     return true;
@@ -802,13 +795,13 @@ impl<'linespan> CSTOutput<'linespan> {
 
                     let CSTNode::Loadout{ ref mut num, .. } = loadout_node else {
                         self.output.push(loadout_node);
-                        self.errs.push(CSTReport::InternalError(203)));
+                        self.errs.push(CSTReport::InternalError(203));
                         return false;
                     };
 
                     self.expect_consume_token_or(
                         Token::Space, ls_iter,
-                        CSTReport::EndOfFileDuring(Some())
+                        CSTReport::EndOfFileDuring(Some(loadout_node.clone()))
                     );
 
                     let Some(_num) = self.parse_expr(ls_iter, 0, false) else {
@@ -844,9 +837,7 @@ impl<'linespan> CSTOutput<'linespan> {
                     };
                     *opt = Some(Box::new(_opt));
 
-                    self.output.push(CSTNode::Activate{
-                        indent_sz, key: name.clone(), opt: Some(Box::new(opt.clone())),
-                    });
+                    self.output.push(activate_node);
                     return true;
                 },
 
@@ -901,6 +892,7 @@ impl<'linespan> CSTOutput<'linespan> {
                         ref mut var, ref mut equal,
                         ref mut start, ref mut end,
                         ref mut dot1, ref mut dot2,
+                        ..
                     } = for_node else {
                         self.errs.push(CSTReport::InternalError(200));
                         return false;
@@ -921,7 +913,7 @@ impl<'linespan> CSTOutput<'linespan> {
                     *var = Some(id);
                     self.consume_space(ls_iter);
 
-                    let Some(equal) = self.expect_consume_token_or(
+                    let Some(_equal) = self.expect_consume_token_or(
                         Token::Equal, ls_iter,
                         CSTReport::EndOfFileDuring(Some(CSTNode::For{
                             indent_sz,
@@ -933,7 +925,7 @@ impl<'linespan> CSTOutput<'linespan> {
                         self.output.push(for_node);
                         return true;
                     };
-                    *equal = Some(equal);
+                    *equal = Some(_equal);
                     self.consume_space(ls_iter);
 
                     let Some(expr) = self.parse_special_for_expr(ls_iter) else {
@@ -959,7 +951,7 @@ impl<'linespan> CSTOutput<'linespan> {
                         self.output.push(for_node);
                         return true;
                     };
-                    *dot2 - Some(dot);
+                    *dot2 = Some(dot);
                     self.consume_space(ls_iter);
 
                     let Some(expr2) = self.parse_special_for_expr(ls_iter) else {
@@ -1229,57 +1221,85 @@ impl<'linespan> CSTOutput<'linespan> {
                 };
                 let _ = bin_op_node;
 
-                let varmut_node = CSTNode::VarMutator{
-                    indent_sz,
-                };
-
-                let Some(expr) = self.parse_expr(ls_iter, 0, false) else { return false };
-
                 let mut op_tok = ltok.clone();
                 op_tok.concat(equal);
 
-                self.output.push(CSTNode::VarMutator{
-                    indent_sz, name: Some(name.clone()),
-                    operator: Some(CSTOpType::MultAssign),
-                    op_tok: Some(op_tok),
-                    amount: Some(Box::new(expr)),
-                });
+                let varmut_node = CSTNode::VarMutator{
+                    indent_sz, name: Some(name.clone()), operator: Some(CSTOpType::MultAssign), op_tok: Some(op_tok), amount: None,
+                };
+
+                let CSTNode::VarMutator{ ref mut amount, .. } = varmut_node else {
+                    self.errs.push(CSTReport::InternalError(200));
+                    return false;
+                };
+
+                let Some(expr) = self.parse_expr(ls_iter, 0, false) else { return false };
+                *amount = Some(Box::new(expr));
+
+                self.output.push(varmut_node);
 
                 return true;
             },
 
             Token::Slash => {
+                let bin_op_node = CSTNode::BinOp{
+                    lhs: Box::new(CSTNode::Label{ name: name.clone() }),
+                    op: ltok.clone(),
+                    rhs: None
+                };
+
                 let Some(equal) = self.expect_consume_token_or(
                     Token::Equal, ls_iter,
-                    CSTReport::EndOfFileDuring(Some(CSTNode::BinOp{
-                        lhs: Box::new(CSTNode::Label{ name: name.clone() }),
-                        op: ltok.clone(),
-                        rhs: None
-                    }
-                ))) else { return true };
-
-                let Some(expr) = self.parse_expr(ls_iter, 0, false) else { return true };
+                    CSTReport::EndOfFileDuring(Some(bin_op_node.clone()))
+                ) else {
+                    self.output.push(bin_op_node);
+                    return true;
+                };
+                let _ = bin_op_node;
 
                 let mut op_tok = ltok.clone();
                 op_tok.concat(equal);
 
-                self.output.push(CSTNode::VarMutator{
-                    indent_sz, name: Some(name.clone()),
-                    operator: Some(CSTOpType::DivAssign),
-                    op_tok: Some(op_tok),
-                    amount: Some(Box::new(expr)),
-                });
+                let varmut_node = CSTNode::VarMutator{
+                    indent_sz, name: Some(name.clone()), operator: Some(CSTOpType::DivAssign), op_tok: Some(op_tok), amount: None,
+                };
+
+                let CSTNode::VarMutator{ ref mut amount, .. } = varmut_node else {
+                    self.errs.push(CSTReport::InternalError(200));
+                    return false;
+                };
+
+                let Some(expr) = self.parse_expr(ls_iter, 0, false) else { return true };
+                *amount = Some(Box::new(expr));
+
+                self.output.push(varmut_node);
 
                 return true;
             },
 
             Token::Dot => {
+                let mut method_node = CSTNode::VarElement{
+                    indent_sz, var: Box::new(CSTNode::Label{ name: name.clone() }), dot: ltok.clone(), element: None,
+                };
+
+                let CSTNode::VarElement{
+                    ref mut element,
+                    ..
+                } = method_node else {
+                    self.errs.push(CSTReport::InternalError(200));
+                    return false;
+                };
+
                 let Some(method) = self.parse_element(
                     ls_iter,
                     CSTNode::Label{ name: name.clone() },
                     ltok.clone(),
                     0,
-                ) else { return true };
+                ) else {
+                    self.output.push(method_node);
+                    return true;
+                };
+
                 match method {
                     CSTNode::VarElement{ .. } => {
                         match ls_iter.peek() {
@@ -1399,7 +1419,10 @@ impl<'linespan> CSTOutput<'linespan> {
                         def: None,
                     };
                 self.output.push(node.clone());
-                self.errs.push(CSTReport::UnfinishedStatement(node));
+                self.errs.push(CSTReport::ExpectedXGotY{
+                    x: Token::Equal,
+                    y: ltok.clone(),
+                });
                 return true;
             },
 
@@ -1407,12 +1430,10 @@ impl<'linespan> CSTOutput<'linespan> {
                 self.consume_space(ls_iter);
                 let Some(equal) = self.expect_consume_token_or(
                     Token::Equal, ls_iter,
-                    CSTReport::UnfinishedStatement(CSTNode::VarDef{
-                        indent_sz,
-                        name: Box::new(CSTNode::Label{ name: name.clone() }),
-                        equal: None,
-                        def: None,
-                    })
+                    CSTReport::ExpectedXGotY{
+                        x: Token::Equal,
+                        y: ltok.clone(),
+                    }
                 ) else { return true };
 
                 self.consume_space(ls_iter);
@@ -1663,7 +1684,10 @@ impl<'linespan> CSTOutput<'linespan> {
                     let Some(face) = self.expect_consume_token_or(
                         Token::Identifier, ls_iter,
                         CSTReport::EndOfFileDuring(Some(_print_node.clone()))
-                    ) else { return true };
+                    ) else {
+                        self.output.push(print_node);
+                        return true;
+                    };
                     if face.span.str.chars().count() != 4 {
                         self.errs.push(CSTReport::ImplicitPrintCastInLine{ x: face.span.line.clone() });
                         contents.push(CSTNode::Label{ name: face.clone() });
@@ -1718,7 +1742,7 @@ impl<'linespan> CSTOutput<'linespan> {
 
                 _ => {
                     is_ascii = false;
-                    self.output.push(CSTNode::Label{ name: (*peek).clone() });
+                    contents.push(CSTNode::Label{ name: (*peek).clone() });
                     ls_iter.next();
                 },
             }
@@ -1736,6 +1760,7 @@ impl<'linespan> CSTOutput<'linespan> {
         indent_sz: usize
     ) -> bool {
         let mut is_else = false;
+
         if if_or_else.token == Token::Colon {
             match ls_iter.peek() {
                 Some(peek) => match peek.token {
@@ -1747,7 +1772,9 @@ impl<'linespan> CSTOutput<'linespan> {
                         });
                         return true;
                     },
+
                     Token::QuestMark => is_else = true,
+
                     _ => {
                         self.errs.push(CSTReport::ExpectedXGotY{
                             x: Token::Newline,
@@ -1756,6 +1783,7 @@ impl<'linespan> CSTOutput<'linespan> {
                         return true;
                     },
                 },
+
                 None => {
                     self.output.push(CSTNode::Else{
                         indent_sz,
@@ -1792,6 +1820,13 @@ impl<'linespan> CSTOutput<'linespan> {
         self.consume_space(ls_iter);
 
         let Some(lhs) = self.parse_expr(ls_iter, 0, false) else {
+            self.output.push(if is_else {
+                CSTNode::Else{
+                    indent_sz,
+                    colon: if_or_else,
+                    if_stmnt: Some(Box::new(if_stmnt)),
+                }
+            } else { if_stmnt });
             return true;
         };
 
@@ -1832,6 +1867,13 @@ impl<'linespan> CSTOutput<'linespan> {
                         x: Token::Newline,
                         y: (*op).clone(),
                     });
+                    self.output.push(if is_else {
+                        CSTNode::Else{
+                            indent_sz,
+                            colon: if_or_else,
+                            if_stmnt: Some(Box::new(if_stmnt)),
+                        }
+                    } else { if_stmnt });
                     return true;
                 },
             },
@@ -1844,6 +1886,13 @@ impl<'linespan> CSTOutput<'linespan> {
                         if_stmnt: Some(Box::new(if_stmnt)),
                     }
                 } else { if_stmnt })));
+                self.output.push(if is_else {
+                    CSTNode::Else{
+                        indent_sz,
+                        colon: if_or_else,
+                        if_stmnt: Some(Box::new(if_stmnt)),
+                    }
+                } else { if_stmnt });
                 return false;
             },
         }
@@ -1872,6 +1921,7 @@ impl<'linespan> CSTOutput<'linespan> {
             star: vec![],
             minus: vec![],
         };
+
         let CSTNode::Equip{
             ref mut tool_name,
             ref mut plus,
@@ -1882,6 +1932,7 @@ impl<'linespan> CSTOutput<'linespan> {
             self.errs.push(CSTReport::InternalError(207));
             return true;
         };
+
         let mut is_expect_space = true;
 
         loop {
@@ -1916,16 +1967,12 @@ impl<'linespan> CSTOutput<'linespan> {
                 },
 
                 Token::Star => {
-                    let Some(expr) = self.parse_special_equip_num(ls_iter) else {
-                        continue
-                    };
+                    let Some(expr) = self.parse_special_equip_num(ls_iter) else { continue };
                     star.push(expr);
                 },
 
                 Token::Dash => {
-                    let Some(expr) = self.parse_special_equip_num(ls_iter) else {
-                        continue
-                    };
+                    let Some(expr) = self.parse_special_equip_num(ls_iter) else { continue };
                     minus.push(expr);
                 },
 
@@ -1997,45 +2044,51 @@ impl<'linespan> CSTOutput<'linespan> {
         func_key: LexToken<'linespan>,
         indent_sz: usize,
     ) -> bool {
-        if self.expect_consume_token_or(
-            Token::Space, ls_iter,
-            CSTReport::EndOfFileDuring(Some(CSTNode::FuncDecl{
-                indent_sz,
-                key: func_key.clone(),
-                name: None,
-                paren: None,
-            }))
-        ).is_none() { return true }
+        let mut funcdecl_node = CSTNode::FuncDecl{
+            indent_sz,
+            key: func_key.clone(),
+            name: None,
+            paren: None,
+        };
 
-        let Some(name) = self.expect_consume_token_or(
+        let CSTNode::FuncDecl{
+            ref mut name, ref mut paren,
+            ..
+        } = funcdecl_node else {
+            self.errs.push(CSTReport::InternalError(200));
+            return false;
+        };
+
+        self.expect_consume_token_or(
+            Token::Space, ls_iter,
+            CSTReport::EndOfFileDuring(Some(funcdecl_node.clone()))
+        );
+
+        let Some(_name) = self.expect_consume_token_or(
             Token::Identifier, ls_iter,
-            CSTReport::EndOfFileDuring(Some(CSTNode::FuncDecl{
-                indent_sz,
-                key: func_key.clone(),
-                name: None,
-                paren: None,
-            }))
-        ) else { return true };
+            CSTReport::EndOfFileDuring(Some(funcdecl_node.clone()))
+        ) else {
+            self.output.push(funcdecl_node);
+            return true;
+        };
         self.consume_space(ls_iter);
+        *name = Some(_name);
 
         let Some(lparen) = self.expect_consume_token_or(
             Token::LParen, ls_iter,
-            CSTReport::EndOfFileDuring(Some(CSTNode::FuncDecl{
-                indent_sz,
-                key: func_key.clone(),
-                name: Some(name.clone()),
-                paren: None,
-            }))
+            CSTReport::EndOfFileDuring(Some(funcdecl_node.clone()))
         ) else { return true };
 
         match self.parse_paren(ls_iter, lparen.clone()) {
-            Some(paren) => self.output.push(CSTNode::FuncDecl{
-                indent_sz,
-                key: func_key.clone(),
-                name: Some(name.clone()),
-                paren: Some(Box::new(paren.clone())),
-            }),
-            None => { return true },
+            Some(_paren) => {
+                *paren = Some(Box::new(_paren));
+                self.output.push(funcdecl_node);
+            },
+
+            None => {
+                self.output.push(funcdecl_node);
+                return true;
+            },
         }
 
         true
