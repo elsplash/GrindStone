@@ -171,10 +171,12 @@ pub enum ARMissing {
     ClrVal,
 
     /* Variable */
+    Var,
     VarName,
     VarDef,
 
     /* Function */
+    Func,
     FuncName,
     FuncParen,
 
@@ -194,11 +196,30 @@ pub enum ARMissing {
     /* If */
     Condition,
 
+    /* Equip */
+    ToolName,
+
+    /* Bin Op */
+    Operator,
+    RHSExpr,
+
     /* Misc */
     Equal,
-    Operator,
+    Number,
+
+    Paren,
+    RParen,
+
+    Bracket,
+    RBracket,
+    LBracket,
+
+    AsciiEnd,
+
+    Comma,
     Option,
-    /* bm:missing */
+    At,
+    Path,
 }
 
 pub enum ASTReport<'linespan> {
@@ -216,9 +237,11 @@ pub enum ASTReport<'linespan> {
         /* NOTE: Could be a LexToken or CSTNode. */
         z: CSTNode<'linespan>,
     },
-    /* ImplicitPrintCastBecause(Box<ASTReport>) */
 
-    /* bm:report */
+    ImplicitPrintCastInXBecauseY{
+        x: CSTNode<'linespan>,
+        y: Box<ASTReport>,
+    },
 }
 
 impl ASTOpType {
@@ -391,7 +414,7 @@ impl<'linespan> ASTBlock<'linespan> {
 
                     let Some(_num) = num else {
                         self.errs.push(ASTReport::MissingXInY {
-                            x: "Number".to_string(),
+                            x: ARMissing::Number,
                             y: _cnode,
                         });
                         continue;
@@ -434,6 +457,7 @@ impl<'linespan> ASTBlock<'linespan> {
         None
     }
 
+    /* bm:current */
     fn parse_print(&mut self, cnode: CSTNode<'linespan>) -> Option<ASTBlock<'linespan>> {
         let _cnode = cnode.clone();
         let CSTNode::Print {
@@ -501,7 +525,7 @@ impl<'linespan> ASTBlock<'linespan> {
         if *ptype != PrintType::Normal {
             let Some(_spcl_x_pos) = spcl_x_pos else {
                 self.errs.push(ASTReport::MissingXInY {
-                    x: "X position".to_string(),
+                    x: ARMissing::XPos,
                     y: _cnode,
                 });
                 return None;
@@ -515,7 +539,7 @@ impl<'linespan> ASTBlock<'linespan> {
 
             let Some(_spcl_y_pos) = spcl_y_pos else {
                 self.errs.push(ASTReport::MissingXInY {
-                    x: "Y position".to_string(),
+                    x: ARMissing::YPos,
                     y: _cnode,
                 });
                 return None;
@@ -530,7 +554,7 @@ impl<'linespan> ASTBlock<'linespan> {
             if let Some(_spcl_clr_key) = spcl_clr_key {
                 let Some(_spcl_clr_val) = spcl_clr_val else {
                     self.errs.push(ASTReport::MissingXInY {
-                        x: "Color value".to_string(),
+                        x: ARMissing::ClrVal,
                         y: _cnode,
                     });
                     return None;
@@ -609,7 +633,7 @@ impl<'linespan> ASTBlock<'linespan> {
             return None;
         };
 
-        let Some(__start) = self.parse_expr(*_start) else {
+        let Some(__start) = self.parse_expr(*(_start.clone())) else {
             return None;
         };
 
@@ -742,6 +766,7 @@ impl<'linespan> ASTBlock<'linespan> {
             op: None,
             rhs: None,
         };
+
         let ASTNode::Brew {
             ref mut lhs,
             ref mut op,
@@ -751,22 +776,22 @@ impl<'linespan> ASTBlock<'linespan> {
             self.errs.push(ASTReport::InternalError(101));
             return None;
         };
+
         let Some(_ingr1) = ingr1 else {
             self.errs.push(ASTReport::MissingXInYAfterZ {
-                x: ARMissing:::Ingr1,
+                x: ARMissing::Ingr1,
                 y: _cnode.clone(),
-                z: CSTNode::Label{ name: key.clone()},
+                z: CSTNode::Label{ name: key },
             });
 
             let Some(_plus) = plus else { return None };
-            *op = ASTOpType::default().translate_ltok(_plus.clone());
 
             let Some(_ingr2) = ingr2 else {
-                self.errs.push(ASTReport::MissingXInYAfterZ {
-                    x: ARMissing::Ingr2,
-                    y: _cnode,
-                    z: CSTNode::Label{ name: _plus },
-                });
+            	self.errs.push(ASTReport::MissingXInYAfterZ {
+            	    x: ARMissing::Ingr2,
+            	    y: _cnode,
+            	    z: CSTNode::Label{ name: _plus },
+            	});
                 return None;
             };
 
@@ -782,9 +807,7 @@ impl<'linespan> ASTBlock<'linespan> {
             return None;
         };
 
-        let Some(__ingr1) = self.parse_expr(*_ingr1) else {
-            return None;
-        };
+        let Some(__ingr1) = self.parse_expr(*_ingr1) else { return None };
         *lhs = Some(Box::new(__ingr1.clone()));
 
         let Some(_plus) = plus else {
@@ -846,7 +869,7 @@ impl<'linespan> ASTBlock<'linespan> {
 
         let Some(_opt) = opt else {
             self.errs.push(ASTReport::MissingXInYAfterZ {
-                x: ARNissing::Option,
+                x: ARMissing::Option,
                 y: _cnode,
                 z: CSTNode::Label{ name: key },
             });
@@ -1096,7 +1119,7 @@ impl<'linespan> ASTBlock<'linespan> {
         };
 
         let Some(_equal) = equal else {
-            self.block.push(ASTNode::VarDecl(Box::new(ASTNode::Label(name.span))));
+            self.block.push(ASTNode::VarDecl(Box::new(ASTNode::Label(_name.span))));
             return None;
         };
 
@@ -1261,7 +1284,7 @@ impl<'linespan> ASTBlock<'linespan> {
             .parse_var_def(_cnode);
         }
 
-        let Some(_name) = self.parse_expr(*name) else {
+        let Some(_name) = self.parse_expr(*(name.clone())) else {
             return None;
         };
 
@@ -1269,7 +1292,7 @@ impl<'linespan> ASTBlock<'linespan> {
             self.errs.push(ASTReport::MissingXInYAfterZ {
                 x: ARMissing::Operator,
                 y: _cnode.clone(),
-                z: *(name.clone),
+                z: *(name.clone()),
             });
             return None;
         };
@@ -1319,11 +1342,10 @@ impl<'linespan> ASTBlock<'linespan> {
                 });
             }
 
-            /* bm:current */
             CSTNode::Paren { ref rparen, .. } => {
                 if rparen.is_none() {
                     self.errs.push(ASTReport::MissingXInY {
-                        x: ,
+                        x: ARMissing::RParen,
                         y: _cnode,
                     });
                 }
@@ -1333,7 +1355,7 @@ impl<'linespan> ASTBlock<'linespan> {
             CSTNode::Brack { ref rbrack, .. } => {
                 if rbrack.is_none() {
                     self.errs.push(ASTReport::MissingXInY {
-                        x: "]".to_string(),
+                        x: ARMissing::LBracket,
                         y: _cnode,
                     });
                 }
@@ -1345,14 +1367,14 @@ impl<'linespan> ASTBlock<'linespan> {
             CSTNode::Item { var, comma } => {
                 if comma.is_none() {
                     self.errs.push(ASTReport::MissingXInY {
-                        x: ",".to_string(),
+                        x: ARMissing::Comma,
                         y: _cnode.clone(),
                     });
                 }
                 let Some(_var) = var else {
                     self.errs.push(ASTReport::MissingXInY {
-                        x: "Variable".to_string(),
-                        y: _cnode,
+                        x: ARMissing::Var,
+                        y: _cnode
                     });
                     return None;
                 };
@@ -1387,19 +1409,22 @@ impl<'linespan> ASTBlock<'linespan> {
                 self.errs.push(ASTReport::InternalError(107));
                 return None;
             };
+
             if comma.is_none() {
                 self.errs.push(ASTReport::MissingXInY {
-                    x: ",".to_string(),
+                    x: ARMissing::Comma,
                     y: node.clone(),
                 });
             }
+
             let Some(ref _var) = *var else {
                 self.errs.push(ASTReport::MissingXInY {
-                    x: "Identifier".to_string(),
+                    x: ARMissing::Var,
                     y: node.clone(),
                 });
                 continue;
             };
+
             let Some(__var) = self.parse_expr(*(_var.clone())) else {
                 continue;
             };
@@ -1422,19 +1447,22 @@ impl<'linespan> ASTBlock<'linespan> {
                 self.errs.push(ASTReport::InternalError(109));
                 return None;
             };
+
             if comma.is_none() {
                 self.errs.push(ASTReport::MissingXInY {
-                    x: ",".to_string(),
+                    x: ARMissing::Comma,
                     y: node.clone(),
                 });
             }
+
             let Some(ref _var) = *var else {
                 self.errs.push(ASTReport::MissingXInY {
-                    x: "Identifier".to_string(),
+                    x: ARMissing::Var,
                     y: node.clone(),
                 });
                 continue;
             };
+
             let Some(__var) = self.parse_expr(*(_var.clone())) else {
                 continue;
             };
@@ -1462,7 +1490,7 @@ impl<'linespan> ASTBlock<'linespan> {
 
         let Some(_rhs) = rhs else {
             self.errs.push(ASTReport::MissingXInY {
-                x: "Right expression".to_string(),
+                x: ARMissing::RHSExpr,
                 y: _cnode,
             });
             return None;
@@ -1488,14 +1516,14 @@ impl<'linespan> ASTBlock<'linespan> {
 
         if at2.is_none() {
             self.errs.push(ASTReport::MissingXInY {
-                x: "@".to_string(),
+                x: ARMissing::At,
                 y: _cnode.clone(),
             });
         }
 
         let Some(_var) = var else {
             self.errs.push(ASTReport::MissingXInY {
-                x: "Variable fetch".to_string(),
+                x: ARMissing::Var,
                 y: _cnode,
             });
             return None;
@@ -1535,7 +1563,7 @@ impl<'linespan> ASTBlock<'linespan> {
         };
         let Some(_method) = method else {
             self.errs.push(ASTReport::MissingXInY {
-                x: "Method".to_string(),
+                x: ARMissing::Func,
                 y: _cnode,
             });
             return None;
@@ -1575,7 +1603,7 @@ impl<'linespan> ASTBlock<'linespan> {
 
         let Some(_brack) = brack else {
             self.errs.push(ASTReport::MissingXInY {
-                x: "Bracket".to_string(),
+                x: ARMissing::Bracket,
                 y: _cnode,
             });
             return None;
@@ -1600,7 +1628,7 @@ impl<'linespan> ASTBlock<'linespan> {
 
         if key_end.is_none() {
             self.errs.push(ASTReport::MissingXInY {
-                x: "asciiend".to_string(),
+                x: ARMissing::AsciiEnd,
                 y: _cnode,
             });
         }
@@ -1618,7 +1646,7 @@ impl<'linespan> ASTBlock<'linespan> {
 
         let Some(_paren) = paren else {
             self.errs.push(ASTReport::MissingXInY {
-                x: "Parenthesis".to_string(),
+                x: ARMissing::Paren,
                 y: _cnode,
             });
             return None;
@@ -1644,7 +1672,7 @@ impl<'linespan> ASTBlock<'linespan> {
 
         let Some(_path) = path else {
             self.errs.push(ASTReport::MissingXInY {
-                x: "Path".to_string(),
+                x: ARMissing::Path,
                 y: _cnode.clone(),
             });
             return None;
@@ -1667,7 +1695,7 @@ impl<'linespan> ASTBlock<'linespan> {
 
         let Some(_path) = path else {
             self.errs.push(ASTReport::MissingXInY {
-                x: "Path".to_string(),
+                x: ARMissing::Path,
                 y: _cnode.clone(),
             });
             return None;
