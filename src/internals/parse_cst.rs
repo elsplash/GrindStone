@@ -285,7 +285,7 @@ fn push_if_some_ltok<'linespan>(
  * [CSTNode] -> 1. ASTReport helpers, like replace, remove, etc.
  */
 impl<'linespan> CSTNode<'linespan> {
-    pub fn fetch_all_strspan(&self) -> Vec<StrSpan> {
+    pub fn fetch_all_strspan(&self) -> Vec<StrSpan<'linespan>> {
         let mut output: Vec<StrSpan> = Vec::new();
         /* NOTE: Since of the burden of the <'linesapn> lifetime, I am not able to make the cnode extractor a function. */
         match self {
@@ -626,7 +626,7 @@ impl<'linespan> CSTNode<'linespan> {
         output
     }
 
-    pub fn fetch_merge_strspan(&self) -> Option<StrSpan> {
+    pub fn fetch_merge_strspan(&self) -> Option<StrSpan<'linespan>> {
         let mut spans = self.fetch_all_strspan();
         let mut s_iter = spans.iter_mut();
         let Some(span) = s_iter.next() else {
@@ -666,7 +666,7 @@ impl<'linespan> CSTOutput<'linespan> {
             let Some(peek) = ls_iter.peek() else { break };
 
             match peek.token {
-                Token::Plus | Token::Dash | Token::Space | Token::Identifier => {
+                Token::Plus | Token::Dash | Token::Identifier => {
                     if is_expect_newline {
                         self.errs.push(CSTReport::ExpectedXGotY {
                             x: Token::Newline,
@@ -676,9 +676,7 @@ impl<'linespan> CSTOutput<'linespan> {
                         continue;
                     }
                     let is_err = self.parse_identifier(&mut ls_iter);
-                    if !is_err {
-                        return false;
-                    }
+                    if !is_err { return false }
                 }
 
                 Token::Greater => {
@@ -715,7 +713,17 @@ impl<'linespan> CSTOutput<'linespan> {
                     }
                 }
 
-                Token::Comment | Token::MultiComment | Token::Newline => {
+                Token::MultiComment | Token::Space => {
+                    if !is_expect_newline {
+                        let is_err = self.parse_identifier(&mut ls_iter);
+                        if !is_err { return false }
+                    } else {
+                        ls_iter.next();
+                        continue;
+                    }
+                },
+
+                Token::Comment | Token::Newline => {
                     ls_iter.next();
                     is_expect_newline = false;
                     continue;
@@ -1874,35 +1882,35 @@ impl<'linespan> CSTOutput<'linespan> {
 
         match ls_iter.next() {
             Some(ltok) => if ltok.token != Token::Comma {
-            	self.errs.push(CSTReport::ImplicitPrintCastInXBecauseY{
-            	    x: CSTNode::Print{
-            	        indent_sz,
-            	        key,
-            	    	spcl_key: spcl_key.clone(),
-            	    	spcl_x_pos: spcl_x_pos.clone(),
-            	    	spcl_y_pos: spcl_y_pos.clone(),
-            	    	spcl_clr_key: spcl_clr_key.clone(),
-            	    	spcl_clr_val: spcl_clr_val.clone(),
-            	    	contents: contents.clone(),
-            	    },
-            	    y: Box::new(CSTReport::ExpectedXGotY{
+                self.errs.push(CSTReport::ImplicitPrintCastInXBecauseY{
+                    x: CSTNode::Print{
+                        indent_sz,
+                        key,
+                        spcl_key: spcl_key.clone(),
+                        spcl_x_pos: spcl_x_pos.clone(),
+                        spcl_y_pos: spcl_y_pos.clone(),
+                        spcl_clr_key: spcl_clr_key.clone(),
+                        spcl_clr_val: spcl_clr_val.clone(),
+                        contents: contents.clone(),
+                    },
+                    y: Box::new(CSTReport::ExpectedXGotY{
                         x: Token::Comma,
                         y: ltok.clone(),
                     }),
-            	});
-            	return false;
+                });
+                return false;
             },
             None => {
                 let node = CSTNode::Print{
-            	    indent_sz,
-            	    key,
-            		spcl_key: spcl_key.clone(),
-            		spcl_x_pos: spcl_x_pos.clone(),
-            		spcl_y_pos: spcl_y_pos.clone(),
-            		spcl_clr_key: spcl_clr_key.clone(),
-            		spcl_clr_val: spcl_clr_val.clone(),
-            		contents: contents.clone(),
-            	};
+                    indent_sz,
+                    key,
+                    spcl_key: spcl_key.clone(),
+                    spcl_x_pos: spcl_x_pos.clone(),
+                    spcl_y_pos: spcl_y_pos.clone(),
+                    spcl_clr_key: spcl_clr_key.clone(),
+                    spcl_clr_val: spcl_clr_val.clone(),
+                    contents: contents.clone(),
+                };
                 self.errs.push(CSTReport::ImplicitPrintCastInXBecauseY{
                     x: node.clone(),
                     y: Box::new(CSTReport::EndOfFileDuring(node)),
@@ -1920,35 +1928,35 @@ impl<'linespan> CSTOutput<'linespan> {
 
         match ls_iter.next() {
             Some(ltok) => if ltok.token != Token::Comma {
-            	self.errs.push(CSTReport::ImplicitPrintCastInXBecauseY{
-            	    x: CSTNode::Print{
-            	        indent_sz,
-            	        key,
-            	    	spcl_key: spcl_key.clone(),
-            	    	spcl_x_pos: spcl_x_pos.clone(),
-            	    	spcl_y_pos: spcl_y_pos.clone(),
-            	    	spcl_clr_key: spcl_clr_key.clone(),
-            	    	spcl_clr_val: spcl_clr_val.clone(),
-            	    	contents: contents.clone(),
-            	    },
-            	    y: Box::new(CSTReport::ExpectedXGotY{
+                self.errs.push(CSTReport::ImplicitPrintCastInXBecauseY{
+                    x: CSTNode::Print{
+                        indent_sz,
+                        key,
+                        spcl_key: spcl_key.clone(),
+                        spcl_x_pos: spcl_x_pos.clone(),
+                        spcl_y_pos: spcl_y_pos.clone(),
+                        spcl_clr_key: spcl_clr_key.clone(),
+                        spcl_clr_val: spcl_clr_val.clone(),
+                        contents: contents.clone(),
+                    },
+                    y: Box::new(CSTReport::ExpectedXGotY{
                         x: Token::Comma,
                         y: ltok.clone(),
                     }),
-            	});
-            	return false;
+                });
+                return false;
             },
             None => {
                 let node = CSTNode::Print{
-            	    indent_sz,
-            	    key,
-            		spcl_key: spcl_key.clone(),
-            		spcl_x_pos: spcl_x_pos.clone(),
-            		spcl_y_pos: spcl_y_pos.clone(),
-            		spcl_clr_key: spcl_clr_key.clone(),
-            		spcl_clr_val: spcl_clr_val.clone(),
-            		contents: contents.clone(),
-            	};
+                    indent_sz,
+                    key,
+                    spcl_key: spcl_key.clone(),
+                    spcl_x_pos: spcl_x_pos.clone(),
+                    spcl_y_pos: spcl_y_pos.clone(),
+                    spcl_clr_key: spcl_clr_key.clone(),
+                    spcl_clr_val: spcl_clr_val.clone(),
+                    contents: contents.clone(),
+                };
                 self.errs.push(CSTReport::ImplicitPrintCastInXBecauseY{
                     x: node.clone(),
                     y: Box::new(CSTReport::EndOfFileDuring(node)),
@@ -3178,8 +3186,6 @@ impl<'linespan> CSTOutput<'linespan> {
                         ls_iter.next();
                     }
 
-                    let opt_space: LexToken<'linespan>;
-
                     match ls_iter.peek() {
                         Some(peek) => match peek.token {
                             Token::Plus => {
@@ -3189,10 +3195,7 @@ impl<'linespan> CSTOutput<'linespan> {
                                 return self.parse_bin_op(ls_iter, quot, _peek);
                             }
 
-                            Token::Space | Token::Continue | Token::MultiComment => {
-                                opt_space = (*peek).clone();
-                                ls_iter.next();
-                            }
+                            Token::Space | Token::Continue | Token::MultiComment => { ls_iter.next(); },
 
                             _ => return Some(quot),
                         },
@@ -3208,13 +3211,7 @@ impl<'linespan> CSTOutput<'linespan> {
                             return self.parse_bin_op(ls_iter, quot, _peek);
                         }
 
-                        _ => {
-                            self.errs.push(CSTReport::ExpectedXGotY {
-                                x: Token::Newline,
-                                y: opt_space,
-                            });
-                            return Some(quot);
-                        }
+                        _ => return Some(quot),
                     }
                 }
 

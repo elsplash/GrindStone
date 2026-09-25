@@ -334,7 +334,7 @@ pub fn parse_all<'linespan>(
 
 impl<'linespan> Display for ASTReport<'linespan> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (err_msg, line, hint, help) = match self.clone() {
+        let (err_msg, line, hint, help) = match self {
             ASTReport::InternalError(code) => (
                 "Internal Error, this is not your fault.".to_string(),
                 ";)".to_string(),
