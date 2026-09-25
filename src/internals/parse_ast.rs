@@ -240,7 +240,7 @@ pub enum ASTReport<'linespan> {
 
     ImplicitPrintCastInXBecauseY{
         x: CSTNode<'linespan>,
-        y: Box<ASTReport>,
+        y: Box<ASTReport<'linespan>>,
     },
 }
 
@@ -457,7 +457,17 @@ impl<'linespan> ASTBlock<'linespan> {
         None
     }
 
-    /* bm:current */
+    fn parse_special_print_contents(&mut self, c: &Vec<CSTNode<'linespan>>) -> Vec<ASTNode<'linespan>> {
+        let mut output = Vec::<ASTNode<'linespan>>::new();
+
+        for node in c.iter() {
+            let Some(_node) = self.parse_expr(node.clone()) else { break };
+            output.push(_node);
+        }
+
+        output
+    }
+
     fn parse_print(&mut self, cnode: CSTNode<'linespan>) -> Option<ASTBlock<'linespan>> {
         let _cnode = cnode.clone();
         let CSTNode::Print {
@@ -486,47 +496,33 @@ impl<'linespan> ASTBlock<'linespan> {
             .parse_print(_cnode);
         }
 
-        let _contents = contents;
-
-        let mut ast_node = ASTNode::Print {
-            ptype: PrintType::Normal,
-            spcl_x: None,
-            spcl_y: None,
-            spcl_clr: None,
-            contents: Vec::new(),
-        };
-        let ASTNode::Print {
-            ref mut ptype,
-            ref mut spcl_x,
-            ref mut spcl_y,
-            ref mut spcl_clr,
-            ref mut contents,
-        } = ast_node
-        else {
-            self.errs.push(ASTReport::InternalError(101));
-            return None;
-        };
+        let mut ptype = PrintType::Normal;
+        let mut spcl_x = None::<Box<ASTNode<'linespan>>>;
+        let mut spcl_y = None::<Box<ASTNode<'linespan>>>;
+        let mut spcl_clr = None::<StrSpan<'linespan>>;
 
         if let Some(_spcl_key) = spcl_key {
             match _spcl_key.span.str.as_str() {
-                "c" => *ptype = PrintType::Centered,
+                "c" => ptype = PrintType::Centered,
 
-                "`" => *ptype = PrintType::Advanced,
+                "`" => ptype = PrintType::Advanced,
 
-                "h" | "o" | "f" => *ptype = PrintType::Relative,
+                "h" | "o" | "f" => ptype = PrintType::Relative,
 
-                "(" => *ptype = PrintType::BigHead,
+                "(" => ptype = PrintType::BigHead,
 
                 _ => self.errs.push(ASTReport::InternalError(101)),
             }
         }
 
-        /* NOTE: We need to make the CST not implicitly cast the Print node yet, since the AST needs it. */
-        if *ptype != PrintType::Normal {
+        if ptype != PrintType::Normal || ptype != PrintType::BigHead {
             let Some(_spcl_x_pos) = spcl_x_pos else {
-                self.errs.push(ASTReport::MissingXInY {
-                    x: ARMissing::XPos,
-                    y: _cnode,
+                self.errs.push(ASTReport::ImplicitPrintCastInXBecauseY {
+                    x: _cnode.clone(),
+                	y: Box::new(ASTReport::MissingXInY {
+                	    x: ARMissing::XPos,
+                	    y: _cnode,
+                	}),
                 });
                 return None;
             };
@@ -535,7 +531,7 @@ impl<'linespan> ASTBlock<'linespan> {
                 return None;
             };
 
-            *spcl_x = Some(Box::new(__spcl_x_pos));
+            spcl_x = Some(Box::new(__spcl_x_pos));
 
             let Some(_spcl_y_pos) = spcl_y_pos else {
                 self.errs.push(ASTReport::MissingXInY {
@@ -549,7 +545,7 @@ impl<'linespan> ASTBlock<'linespan> {
                 return None;
             };
 
-            *spcl_y = Some(Box::new(__spcl_y_pos));
+            spcl_y = Some(Box::new(__spcl_y_pos));
 
             if let Some(_spcl_clr_key) = spcl_clr_key {
                 let Some(_spcl_clr_val) = spcl_clr_val else {
@@ -560,18 +556,15 @@ impl<'linespan> ASTBlock<'linespan> {
                     return None;
                 };
 
-                *spcl_clr = Some(_spcl_clr_val.span);
+                spcl_clr = Some(_spcl_clr_val.span);
             }
         }
 
-        for node in _contents.iter() {
-            let Some(_node) = self.parse_expr(node.clone()) else {
-                break;
-            };
-            contents.push(_node);
-        }
+        let ast_contents = self.parse_special_print_contents(&contents);
 
-        self.block.push(ast_node);
+        self.block.push(ASTNode::Print{
+            ptype, spcl_x, spcl_y, spcl_clr, contents: ast_contents,
+        });
 
         None
     }
@@ -1665,22 +1658,25 @@ impl<'linespan> ASTBlock<'linespan> {
     /* NOTE: For future implementation, please check the indent_sz */
     fn parse_import(&mut self, cnode: CSTNode<'linespan>) -> Option<ASTNode<'linespan>> {
         let _cnode = cnode.clone();
-        let CSTNode::Import { path, .. } = cnode else {
+        let CSTNode::Import {
+            key,
+            path,
+            ..
+        } = cnode else {
             self.errs.push(ASTReport::InternalError(118));
             return None;
         };
 
         let Some(_path) = path else {
-            self.errs.push(ASTReport::MissingXInY {
+            self.errs.push(ASTReport::MissingXInYAfterZ {
                 x: ARMissing::Path,
                 y: _cnode.clone(),
+                z: CSTNode::Label{ name: key },
             });
             return None;
         };
 
-        let Some(__path) = self.parse_expr(*_path) else {
-            return None;
-        };
+        let Some(__path) = self.parse_expr(*_path) else { return None };
 
         Some(ASTNode::Import(Box::new(__path)))
     }
