@@ -108,7 +108,23 @@ app.
 
 This should just be a list of things I should implement
 after I stopped working on the project, which is updated
-in [insert date] currently.
+in 09.25.2026 currently.
+
+### Manual References
+
+Make errors have attacked Manual references like:
+
+```none
+[ERROR] Expected Equal (=) got Identifier.
+23 | for v in 1..2
+   |       ^^
+[HINT] You may replace `in` with `=`.
+23 - for v in 1..2
+23 + for v = 1..2
+[HELP] For proper `for` statements, go to https://stonestoryrpg.com/stonescript/manual.html#loops
+```
+
+So people can know where to go.
 
 ## Review
 
