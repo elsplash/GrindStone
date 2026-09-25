@@ -3,8 +3,11 @@ use internals::{
     handle_args,
     LineSpan,
     LexerOutput,
+
     CSTOutput,
-    ASTBlock,
+
+    ASTOutput,
+    ast_output_parse_all,
 };
 
 fn main() {
@@ -33,12 +36,26 @@ fn main() {
 
         err_count += cst_tree.errs.len();
 
-        let ast_tree = ASTBlock::new();
+        let mut ast_tree = ASTOutput{
+            output: Vec::new(),
+            errs: Vec::new(),
+        };
 
-        /* ast_tree.merge(cst_tree); */
+        ast_output_parse_all(&mut ast_tree, &cst_tree);
+
+        for node in ast_tree.output.iter() {
+            println!("{:#?}\n", node);
+        }
+
+        for err in ast_tree.errs.iter() {
+            println!("{err}\n");
+        }
+
+        err_count += ast_tree.errs.len();
+
+    	/* TODO: Semantic Analyzer */
     }
 
-    /* TODO: Semantic Analyzer */
 
     /*
      * Semantically Analyze the Parsed output

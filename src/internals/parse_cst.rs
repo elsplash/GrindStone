@@ -279,11 +279,6 @@ fn push_if_some_ltok<'linespan>(
     }
 }
 
-/*
- * TODO LIST 1000:
- *
- * [CSTNode] -> 1. ASTReport helpers, like replace, remove, etc.
- */
 impl<'linespan> CSTNode<'linespan> {
     pub fn fetch_all_strspan(&self) -> Vec<StrSpan<'linespan>> {
         let mut output: Vec<StrSpan> = Vec::new();
@@ -650,6 +645,10 @@ impl<'linespan> CSTNode<'linespan> {
     }
 }
 
+/* TODO LIST:
+ * 1. Replace all ExpectedXGotY to pass over to the AST
+ *    Or find a way to implement it here.
+ */
 impl<'linespan> CSTOutput<'linespan> {
     pub fn new() -> CSTOutput<'linespan> {
         CSTOutput {

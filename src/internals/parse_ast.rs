@@ -153,14 +153,14 @@ pub enum ASTNode<'linespan> {
 }
 
 pub struct ASTBlock<'linespan> {
-    indent_lv: usize,
-    block: Vec<ASTNode<'linespan>>,
-    errs: Vec<ASTReport<'linespan>>,
+    pub indent_lv: usize,
+    pub block: Vec<ASTNode<'linespan>>,
+    pub errs: Vec<ASTReport<'linespan>>,
 }
 
 pub struct ASTOutput<'linespan> {
-    output: Vec<ASTBlock<'linespan>>,
-    errs: Vec<ASTReport<'linespan>>,
+    pub output: Vec<ASTBlock<'linespan>>,
+    pub errs: Vec<ASTReport<'linespan>>,
 }
 
 pub enum ARMissing {
@@ -284,7 +284,7 @@ impl ASTOpType {
 }
 
 /* NOTE: bool is "Succeeded?". */
-pub fn parse_all<'linespan>(
+pub fn ast_output_parse_all<'linespan>(
     ast_output: &mut ASTOutput<'linespan>,
     cst_output: &'linespan CSTOutput<'linespan>,
 ) -> bool {
