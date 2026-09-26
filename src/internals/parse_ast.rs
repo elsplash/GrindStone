@@ -4,6 +4,9 @@
  *
  * I was fucking wrong.
  * - ESplash (09.21.26)
+ *
+ * It's almost over!!
+ * - ESplash (09.26.26)
  */
 
 use crate::internals::{
@@ -22,6 +25,7 @@ pub enum ASTOpType {
     Times,
     Divide,
     Modulo,
+
     Greater,
     Lesser,
     GreatEq,
@@ -29,6 +33,7 @@ pub enum ASTOpType {
     And,
     Or,
     Not,
+
     Equal,
 
     Increment,
@@ -228,13 +233,11 @@ pub enum ASTReport<'linespan> {
     MissingXInY {
         x: ARMissing,
         y: CSTNode<'linespan>,
-    }, /* NOTE: This is still needed by the way */
+    },
 
     MissingXInYAfterZ {
         x: ARMissing,
         y: CSTNode<'linespan>,
-
-        /* NOTE: Could be a LexToken or CSTNode. */
         z: CSTNode<'linespan>,
     },
 
@@ -332,15 +335,97 @@ pub fn ast_output_parse_all<'linespan>(
     true
 }
 
+impl Display for ARMissing {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f, "{}",
+            match self {
+                ARMissing::XPos => "X Position",
+                ARMissing::YPos => "Y Position",
+                ARMissing::ClrKey => "Color Key",
+                ARMissing::ClrVal => "Color Code (#DEF012)",
+
+                ARMissing::Var => "Variable",
+                ARMissing::VarName => "Variable Name",
+                ARMissing::VarDef => "Variable Definition",
+
+                ARMissing::Func => "Function",
+                ARMissing::FuncName => "Function Name",
+                ARMissing::FuncParen => "Function Parenthesis",
+
+                ARMissing::StartNum => "Starting number",
+                ARMissing::Dot1 => "First Dot",
+                ARMissing::Dot2 => "Second Dot",
+                ARMissing::EndNum => "Ending number",
+
+                ARMissing::Sound => "Sound name",
+
+                ARMissing::Ingr1 => "First Ingredient",
+                ARMissing::Ingr2 => "Second Ingredient",
+
+                ARMissing::ToolName => "Tool Name",
+
+                ARMissing::Condition => "Condition",
+
+                ARMissing::Operator => "Operator",
+                ARMissing::RHSExpr => "Right hand expression",
+
+                ARMissing::Equal => "Equal",
+                ARMissing::Number => "Number",
+
+                ARMissing::Paren => "Parenthesis",
+                ARMissing::RParen => "Right Parenthesis",
+
+                ARMissing::Bracket => "Bracket",
+                ARMissing::LBracket => "Left Bracket",
+                ARMissing::RBracket => "Right Bracket",
+
+                ARMissing::AsciiEnd => "Ascii End Label",
+
+                ARMissing::Comma => "Comma",
+                ARMissing::Option => "Option",
+                ARMissing::At => "At",
+                ARMissing::Path => "Path",
+            }
+        )
+    }
+}
+
 impl<'linespan> Display for ASTReport<'linespan> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (err_msg, line, hint, help) = match self {
             ASTReport::InternalError(code) => (
-                "Internal Error, this is not your fault.".to_string(),
-                ";)".to_string(),
-                format!("You may report this to ESplash, ERRCODE: {}", *code),
-                None::<String>,
+                "Internal Error, this is not your fault.",
+                ";)",
+                format!("You may report this to ESplash, ERRCODE: {}", *code).as_str(),
+                None::<&str>,
             ),
+
+            ASTReport::MissingXInY{x, y} => {
+                let help_code: &str;
+                match x {
+                    ARMissing::XPos => {
+                        if let Some(span) = y.fetxh_all_strspan() {
+                            help_code = format!("").as_str();
+                        }
+                    },
+                    ARMissing::YPos => {
+                        // ...
+                    },
+
+                    _ => todo!()
+                }
+                (
+                    format!("Missing {x} in this statement").as_str(),
+                    format!("{}".fetch_merge_strspan()).as_str(),
+                    format!("You can put a {x} here.").as_str(),
+                    Some(help_code.as_str()),
+                )
+            },
+
+            ASTReport::MissingXInYAfterZ{x, y, z} => {},
+
+            ASTReport::ImplicitPrintCastInXBecauseY{x, y} => {},
 
             _ => todo!(),
         };
@@ -481,7 +566,7 @@ impl<'linespan> ASTBlock<'linespan> {
             ..
         } = cnode
         else {
-            self.errs.push(ASTReport::InternalError(100));
+            self.errs.push(ASTReport::InternalError(1));
             return None;
         };
 
@@ -511,7 +596,7 @@ impl<'linespan> ASTBlock<'linespan> {
 
                 "(" => ptype = PrintType::BigHead,
 
-                _ => self.errs.push(ASTReport::InternalError(101)),
+                _ => self.errs.push(ASTReport::InternalError(2)),
             }
         }
 
@@ -583,7 +668,7 @@ impl<'linespan> ASTBlock<'linespan> {
             ..
         } = cnode
         else {
-            self.errs.push(ASTReport::InternalError(100));
+            self.errs.push(ASTReport::InternalError(3));
             return None;
         };
 
@@ -679,7 +764,7 @@ impl<'linespan> ASTBlock<'linespan> {
             pitch,
         } = cnode
         else {
-            self.errs.push(ASTReport::InternalError(100));
+            self.errs.push(ASTReport::InternalError(3));
             return None;
         };
 
@@ -739,7 +824,7 @@ impl<'linespan> ASTBlock<'linespan> {
             ingr2,
         } = cnode
         else {
-            self.errs.push(ASTReport::InternalError(100));
+            self.errs.push(ASTReport::InternalError(4));
             return None;
         };
 
@@ -766,86 +851,7 @@ impl<'linespan> ASTBlock<'linespan> {
             ref mut rhs,
         } = ast_node
         else {
-            self.errs.push(ASTReport::InternalError(101));
-            return None;
-        };
-
-        let Some(_ingr1) = ingr1 else {
-            self.errs.push(ASTReport::MissingXInYAfterZ {
-                x: ARMissing::Ingr1,
-                y: _cnode.clone(),
-                z: CSTNode::Label{ name: key },
-            });
-
-            let Some(_plus) = plus else { return None };
-
-            let Some(_ingr2) = ingr2 else {
-            	self.errs.push(ASTReport::MissingXInYAfterZ {
-            	    x: ARMissing::Ingr2,
-            	    y: _cnode,
-            	    z: CSTNode::Label{ name: _plus },
-            	});
-                return None;
-            };
-
-            let Some(__ingr2) = self.parse_expr(*_ingr2) else {
-                return None;
-            };
-
-            *rhs = Some(Box::new(__ingr2));
-
-            self.errs.pop();
-            self.block.push(ast_node);
-
-            return None;
-        };
-
-        let Some(__ingr1) = self.parse_expr(*_ingr1) else { return None };
-        *lhs = Some(Box::new(__ingr1.clone()));
-
-        let Some(_plus) = plus else {
-            self.block.push(ASTNode::Brew {
-                lhs: Some(Box::new(__ingr1)),
-                op: None,
-                rhs: None,
-            });
-            return None;
-        };
-
-        let Some(__plus) = ASTOpType::default().translate_ltok(_plus.clone()) else {
-            return None;
-        };
-        *op = Some(__plus);
-
-        let Some(_ingr2) = ingr2 else {
-            self.errs.push(ASTReport::MissingXInYAfterZ {
-                x: ARMissing::Ingr2,
-                y: _cnode,
-                z: CSTNode::Label{ name: _plus },
-            });
-            return None;
-        };
-
-        let Some(__ingr2) = self.parse_expr(*_ingr2) else {
-            return None;
-        };
-        *rhs = Some(Box::new(__ingr2));
-
-        self.block.push(ast_node);
-
-        None
-    }
-
-    fn parse_disable(&mut self, cnode: CSTNode<'linespan>) -> Option<ASTBlock<'linespan>> {
-        let _cnode = cnode.clone();
-        let CSTNode::Disable {
-            indent_sz,
-            key,
-            opt,
-            opt_opts,
-        } = cnode
-        else {
-            self.errs.push(ASTReport::InternalError(100));
+            self.errs.push(ASTReport::InternalError(5));
             return None;
         };
 
@@ -906,7 +912,7 @@ impl<'linespan> ASTBlock<'linespan> {
             opt_opts,
         } = cnode
         else {
-            self.errs.push(ASTReport::InternalError(100));
+            self.errs.push(ASTReport::InternalError(6));
             return None;
         };
 
@@ -970,7 +976,7 @@ impl<'linespan> ASTBlock<'linespan> {
             ..
         } = cnode
         else {
-            self.errs.push(ASTReport::InternalError(100));
+            self.errs.push(ASTReport::InternalError(7));
             return None;
         };
 
@@ -1044,7 +1050,7 @@ impl<'linespan> ASTBlock<'linespan> {
             indent_sz, key, bin_op,
         } = cnode
         else {
-            self.errs.push(ASTReport::InternalError(100));
+            self.errs.push(ASTReport::InternalError(8));
             return None;
         };
 
@@ -1087,7 +1093,7 @@ impl<'linespan> ASTBlock<'linespan> {
             def,
         } = cnode
         else {
-            self.errs.push(ASTReport::InternalError(101));
+            self.errs.push(ASTReport::InternalError(9));
             return None;
         };
 
@@ -1147,7 +1153,7 @@ impl<'linespan> ASTBlock<'linespan> {
             paren,
         } = cnode
         else {
-            self.errs.push(ASTReport::InternalError(102));
+            self.errs.push(ASTReport::InternalError(10));
             return None;
         };
 
@@ -1200,7 +1206,7 @@ impl<'linespan> ASTBlock<'linespan> {
             ..
         } = cnode
         else {
-            self.errs.push(ASTReport::InternalError(103));
+            self.errs.push(ASTReport::InternalError(11));
             return None;
         };
 
@@ -1326,7 +1332,7 @@ impl<'linespan> ASTBlock<'linespan> {
 
             CSTNode::Number { num } => {
                 let Ok(val) = num.span.str.parse::<f64>() else {
-                    self.errs.push(ASTReport::InternalError(104));
+                    self.errs.push(ASTReport::InternalError(12));
                     return None;
                 };
                 return Some(ASTNode::Number {
@@ -1383,7 +1389,7 @@ impl<'linespan> ASTBlock<'linespan> {
             CSTNode::New { .. } => return self.parse_new(cnode),
 
             _ => {
-                self.errs.push(ASTReport::InternalError(105));
+                self.errs.push(ASTReport::InternalError(13));
                 return None;
             }
         }
@@ -1391,7 +1397,7 @@ impl<'linespan> ASTBlock<'linespan> {
 
     fn parse_paren(&mut self, cnode: CSTNode<'linespan>) -> Option<ASTNode<'linespan>> {
         let CSTNode::Paren { contents, .. } = cnode else {
-            self.errs.push(ASTReport::InternalError(106));
+            self.errs.push(ASTReport::InternalError(14));
             return None;
         };
 
@@ -1399,7 +1405,7 @@ impl<'linespan> ASTBlock<'linespan> {
 
         for node in contents.iter() {
             let CSTNode::Item { var, comma } = node else {
-                self.errs.push(ASTReport::InternalError(107));
+                self.errs.push(ASTReport::InternalError(15));
                 return None;
             };
 
@@ -1429,7 +1435,7 @@ impl<'linespan> ASTBlock<'linespan> {
 
     fn parse_bracket(&mut self, cnode: CSTNode<'linespan>) -> Option<ASTNode<'linespan>> {
         let CSTNode::Brack { contents, .. } = cnode else {
-            self.errs.push(ASTReport::InternalError(108));
+            self.errs.push(ASTReport::InternalError(16));
             return None;
         };
 
@@ -1437,7 +1443,7 @@ impl<'linespan> ASTBlock<'linespan> {
 
         for node in contents.iter() {
             let CSTNode::Item { var, comma } = node else {
-                self.errs.push(ASTReport::InternalError(109));
+                self.errs.push(ASTReport::InternalError(17));
                 return None;
             };
 
@@ -1468,7 +1474,7 @@ impl<'linespan> ASTBlock<'linespan> {
     fn parse_bin_op(&mut self, cnode: CSTNode<'linespan>) -> Option<ASTNode<'linespan>> {
         let _cnode = cnode.clone();
         let CSTNode::BinOp { lhs, op, rhs } = cnode else {
-            self.errs.push(ASTReport::InternalError(110));
+            self.errs.push(ASTReport::InternalError(18));
             return None;
         };
 
@@ -1477,7 +1483,7 @@ impl<'linespan> ASTBlock<'linespan> {
         };
 
         let Some(ast_op) = ASTOpType::default().translate_ltok(op) else {
-            self.errs.push(ASTReport::InternalError(111));
+            self.errs.push(ASTReport::InternalError(19));
             return None;
         };
 
@@ -1503,7 +1509,7 @@ impl<'linespan> ASTBlock<'linespan> {
     fn parse_var_fetch(&mut self, cnode: CSTNode<'linespan>) -> Option<ASTNode<'linespan>> {
         let _cnode = cnode.clone();
         let CSTNode::VarFetch { mut at1, var, at2 } = cnode else {
-            self.errs.push(ASTReport::InternalError(112));
+            self.errs.push(ASTReport::InternalError(20));
             return None;
         };
 
@@ -1547,7 +1553,7 @@ impl<'linespan> ASTBlock<'linespan> {
     fn parse_var_method(&mut self, cnode: CSTNode<'linespan>) -> Option<ASTNode<'linespan>> {
         let _cnode = cnode.clone();
         let CSTNode::VarMethod { var, method, .. } = cnode else {
-            self.errs.push(ASTReport::InternalError(109));
+            self.errs.push(ASTReport::InternalError(21));
             return None;
         };
 
@@ -1568,12 +1574,12 @@ impl<'linespan> ASTBlock<'linespan> {
             paren,
         } = *_method
         else {
-            self.errs.push(ASTReport::InternalError(113));
+            self.errs.push(ASTReport::InternalError(22));
             return None;
         };
 
         let Some(_paren) = paren else {
-            self.errs.push(ASTReport::InternalError(114));
+            self.errs.push(ASTReport::InternalError(23));
             return None;
         };
         let Some(__paren) = self.parse_expr(*_paren) else {
@@ -1590,7 +1596,7 @@ impl<'linespan> ASTBlock<'linespan> {
     fn parse_table_access(&mut self, cnode: CSTNode<'linespan>) -> Option<ASTNode<'linespan>> {
         let _cnode = cnode.clone();
         let CSTNode::TableAccess { label, brack } = cnode else {
-            self.errs.push(ASTReport::InternalError(115));
+            self.errs.push(ASTReport::InternalError(24));
             return None;
         };
 
@@ -1615,7 +1621,7 @@ impl<'linespan> ASTBlock<'linespan> {
     fn parse_ascii(&mut self, cnode: CSTNode<'linespan>) -> Option<ASTNode<'linespan>> {
         let _cnode = cnode.clone();
         let CSTNode::Ascii { lines, key_end, .. } = cnode else {
-            self.errs.push(ASTReport::InternalError(116));
+            self.errs.push(ASTReport::InternalError(25));
             return None;
         };
 
@@ -1633,7 +1639,7 @@ impl<'linespan> ASTBlock<'linespan> {
     fn parse_func(&mut self, cnode: CSTNode<'linespan>) -> Option<ASTNode<'linespan>> {
         let _cnode = cnode.clone();
         let CSTNode::FuncCall { name, paren, .. } = cnode else {
-            self.errs.push(ASTReport::InternalError(117));
+            self.errs.push(ASTReport::InternalError(26));
             return None;
         };
 
@@ -1663,7 +1669,7 @@ impl<'linespan> ASTBlock<'linespan> {
             path,
             ..
         } = cnode else {
-            self.errs.push(ASTReport::InternalError(118));
+            self.errs.push(ASTReport::InternalError(27));
             return None;
         };
 
@@ -1685,7 +1691,7 @@ impl<'linespan> ASTBlock<'linespan> {
     fn parse_new(&mut self, cnode: CSTNode<'linespan>) -> Option<ASTNode<'linespan>> {
         let _cnode = cnode.clone();
         let CSTNode::New { path, .. } = cnode else {
-            self.errs.push(ASTReport::InternalError(119));
+            self.errs.push(ASTReport::InternalError(28));
             return None;
         };
 

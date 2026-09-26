@@ -236,37 +236,240 @@ pub struct CSTOutput<'linespan> {
     pub errs: Vec<CSTReport<'linespan>>,
 }
 
+fn fetch_help_code<'linespan>(err: &CSTReport<'linespan>) -> (String, String) {
+    let help_message;
+    let help_code;
+    match err {
+        CSTReport::ExpectedXGotY{x, y} => match x {
+            Token::Newline => {
+                help_message = "[HINT] You need to place a newline here.".to_string();
+                let num_size = " ".repeat(y.span.line.num.to_string().len());
+                let span_str = &y.clone().span.line.str;
+                let modified_code: String = span_str.chars().take(y.span.clmn).collect();
+                help_code = format!(
+                    "{num_size} |\n{} - {}\n{} + {modified_code}\n{num_size} |",
+                    y.span.line.num,
+                    y.span.line.str,
+                    y.span.line.num,
+                );
+            },
+
+            Token::Space => {
+                help_message = "[HINT] You may need to add a space here.".to_string();
+                let num_size = " ".repeat(y.span.line.num.to_string().len());
+                let lhs: String = y.span.str.chars().take(y.span.clmn).collect();
+                let rhs: String = y.span.str.chars()
+                    .skip(y.span.clmn).take(y.span.line.str.len() - y.span.clmn).collect();
+                let modified_code = format!("{lhs} {rhs}");
+                help_code = format!(
+                    "{num_size} |\n{} - {}\n{} + {modified_code}\n{num_size} |",
+                    y.span.line.num,
+                    y.span.line.str,
+                    y.span.line.num,
+                );
+            },
+
+            /* TODO(V2): Make this peek ahead if there is a identifier. */
+            Token::Identifier => {
+                help_message = "[HINT] You may need to add a name here".to_string();
+                let num_size = " ".repeat(y.span.line.num.to_string().len());
+                let lhs: String = y.span.str.chars().take(y.span.clmn).collect();
+                let rhs: String = y.span.str.chars()
+                    .skip(y.span.clmn).take(y.span.line.str.len() - y.span.clmn).collect();
+                let modified_code = format!("{lhs}[NAME]{rhs} <- You need to replace [NAME] with a name");
+                help_code = format!(
+                    "{num_size} |\n{} - {}\n{} + {modified_code}\n{num_size} |",
+                    y.span.line.num,
+                    y.span.line.str,
+                    y.span.line.num,
+                );
+            },
+
+            Token::Plus => {
+                help_message = "[HINT] You may need to add a Plus (+) here".to_string();
+                let num_size = " ".repeat(y.span.line.num.to_string().len());
+                let lhs: String = y.span.str.chars().take(y.span.clmn).collect();
+                let rhs: String = y.span.str.chars()
+                    .skip(y.span.clmn).take(y.span.line.str.len() - y.span.clmn).collect();
+                let modified_code = format!("{lhs}+{rhs} <- This is an incrementor");
+                help_code = format!(
+                    "{num_size} |\n{} - {}\n{} + {modified_code}\n{num_size} |",
+                    y.span.line.num,
+                    y.span.line.str,
+                    y.span.line.num,
+                );
+            },
+
+            Token::Dash => {
+                help_message = "[HINT] You may need to add a Plus (-) here".to_string();
+                let num_size = " ".repeat(y.span.line.num.to_string().len());
+                let lhs: String = y.span.str.chars().take(y.span.clmn).collect();
+                let rhs: String = y.span.str.chars()
+                    .skip(y.span.clmn).take(y.span.line.str.len() - y.span.clmn).collect();
+                let modified_code = format!("{lhs}+{rhs} <- This is an decrementor");
+                help_code = format!(
+                    "{num_size} |\n{} - {}\n{} + {modified_code}\n{num_size} |",
+                    y.span.line.num,
+                    y.span.line.str,
+                    y.span.line.num,
+                );
+            },
+
+            Token::Equal => {
+                help_message = "[HINT] You may insert Equals (=), or assignment.".to_string();
+                let num_size = " ".repeat(y.span.line.num.to_string().len());
+                let lhs: String = y.span.str.chars().take(y.span.clmn).collect();
+                let rhs: String = y.span.str.chars()
+                    .skip(y.span.clmn).take(y.span.line.str.len() - y.span.clmn).collect();
+                let modified_code = format!("{lhs}={rhs} <- This is an assigment");
+                help_code = format!(
+                    "{num_size} |\n{} - {}\n{} + {modified_code}\n{num_size} |",
+                    y.span.line.num,
+                    y.span.line.str,
+                    y.span.line.num,
+                );
+            },
+
+            Token::Comma => {
+                help_message = "[HINT] You may insert a Comma (,)".to_string();
+                let num_size = " ".repeat(y.span.line.num.to_string().len());
+                let lhs: String = y.span.str.chars().take(y.span.clmn).collect();
+                let rhs: String = y.span.str.chars()
+                    .skip(y.span.clmn).take(y.span.line.str.len() - y.span.clmn).collect();
+                let modified_code = format!("{lhs},{rhs}");
+                help_code = format!(
+                    "{num_size} |\n{} - {}\n{} + {modified_code}\n{num_size} |",
+                    y.span.line.num,
+                    y.span.line.str,
+                    y.span.line.num,
+                );
+            },
+
+            Token::Star => {
+                help_message = "[HINT] You may need a Star (*) here".to_string();
+                let num_size = " ".repeat(y.span.line.num.to_string().len());
+                let lhs: String = y.span.str.chars().take(y.span.clmn).collect();
+                let rhs: String = y.span.str.chars()
+                    .skip(y.span.clmn).take(y.span.line.str.len() - y.span.clmn).collect();
+                let modified_code = format!("{lhs}*{rhs}");
+                help_code = format!(
+                    "{num_size} |\n{} - {}\n{} + {modified_code}\n{num_size} |",
+                    y.span.line.num,
+                    y.span.line.str,
+                    y.span.line.num,
+                );
+            },
+
+            Token::Number => {
+                help_message = "[HINT] You need to insert a Number here".to_string();
+                let num_size = " ".repeat(y.span.line.num.to_string().len());
+                let lhs: String = y.span.str.chars().take(y.span.clmn).collect();
+                let rhs: String = y.span.str.chars()
+                    .skip(y.span.clmn).take(y.span.line.str.len() - y.span.clmn).collect();
+                let modified_code = format!("{lhs}1234{rhs} <- You can replace 1234 with a number.");
+                help_code = format!(
+                    "{num_size} |\n{} - {}\n{} + {modified_code}\n{num_size} |",
+                    y.span.line.num,
+                    y.span.line.str,
+                    y.span.line.num,
+                );
+            },
+
+            Token::Slash => {
+                help_message = "[HINT] You need to put a Slash (/) here".to_string();
+                let num_size = " ".repeat(y.span.line.num.to_string().len());
+                let lhs: String = y.span.str.chars().take(y.span.clmn).collect();
+                let rhs: String = y.span.str.chars()
+                    .skip(y.span.clmn).take(y.span.line.str.len() - y.span.clmn).collect();
+                let modified_code = format!("{lhs}/{rhs}");
+                help_code = format!(
+                    "{num_size} |\n{} - {}\n{} + {modified_code}\n{num_size} |",
+                    y.span.line.num,
+                    y.span.line.str,
+                    y.span.line.num,
+                );
+            },
+
+        	_ => (help_message, help_code) = ("Internal Error".to_string(), "Internal Error".to_string()),
+        },
+
+        /* TODO(V2): Add the "complete node" function */
+        CSTReport::EndOfFileDuring(_) => {
+            help_message = "[HINT] You need to finish this statement first.".to_string();
+            help_code = String::new();
+        },
+
+        _ => (help_message, help_code) = ("Internal Error".to_string(), "Internal Error".to_string()),
+    }
+
+    (help_message, help_code)
+}
+
 impl<'linespan> Display for CSTReport<'linespan> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let err: String;
+        let origin: String;
         let line: String;
         let help_message: String;
+        let help_code: String;
         match self {
             CSTReport::InternalError(id) => {
                 err = "[ERROR] Internal Error, this is not your fault.".to_string();
+                origin = String::new();
                 line = ";)".to_string();
                 help_message = format!("[HINT] You may report this to the devs ( ERRCODE: {id} )");
+                help_code = String::new();
             }
 
             CSTReport::ExpectedXGotY { x, y } => {
                 err = format!("[ERROR] Expected {x} got {}", y.token);
-                line = format!("{}", y.span);
-                help_message =
-                    format!("[HINT] You may need to replace `{}` with a {x}", y.span.str);
+                origin = format!(" -> {}:{}:{}", y.span.line.file, y.span.line.num, y.span.clmn);
+                let num_size = " ".repeat(y.span.line.num.to_string().len());
+                line = format!("{num_size} |\n{}\n{num_size} |", y.span);
+                (help_message, help_code) = fetch_help_code(&self);
             }
 
             CSTReport::EndOfFileDuring(x) => {
                 err = "[ERROR] End of file during x.".to_string();
-                line = match x.fetch_linespan() {
-                    Some(l) => format!("{l}"),
-                    None => String::new(),
-                };
-                help_message = "[HINT] You may need to finish this line first.".to_string();
+                let spans = x.fetch_all_strspan();
+                if let Some(x_span) = spans.first() {
+                    origin = format!(" -> {}:{}:{}", x_span.line.file, x_span.line.num, x_span.clmn);
+                    let l = x_span.line;
+                    let num_size = " ".repeat(l.num.to_string().len());
+                    let str_size = "^".repeat(l.str.len());
+                	line = format!("{num_size} |\n{l}\n{num_size} | {str_size}\n{num_size} |");
+                } else {
+                    origin = " -> Internal Error".to_string();
+                    line = String::new();
+                }
+                (help_message, help_code) = fetch_help_code(&self);
             },
 
-            CSTReport::ImplicitPrintCastInXBecauseY{x, y} => todo!(),
+            CSTReport::ImplicitPrintCastInXBecauseY{x, y} => {
+                err = "[WARNING] This print statement became a normal print.".to_string();
+                let spans = x.fetch_all_strspan();
+                if let Some(x_span) = spans.first() {
+                    origin = format!(" -> {}:{}:{}", x_span.line.file, x_span.line.num, x_span.clmn);
+                } else { origin = " -> Internal Error".to_string() }
+                line = match x.fetch_linespan() {
+                    Some(l) => format!(
+                        "{} |\n{l}\n{} |\n{} | {}\n{} |",
+                        " ".repeat(l.num.to_string().len()),
+                        " ".repeat(l.num.to_string().len()),
+                        " ".repeat(l.num.to_string().len()),
+                        "~".repeat(l.str.len()),
+                        " ".repeat(l.num.to_string().len()),
+                    ),
+                    None => "If you're seeing this, I messed up.".to_string(),
+                };
+                help_message = format!(
+                    "[HINT] It happened because of:\n{}",
+                    *(y.clone())
+                );
+                help_code = String::new();
+            },
         }
-        write!(f, "{}\n{}\n{}", err, line, help_message)
+        write!(f, "{err}\n{origin}\n{line}\n{help_message}\n{help_code}")
     }
 }
 
@@ -622,14 +825,11 @@ impl<'linespan> CSTNode<'linespan> {
     }
 
     pub fn fetch_merge_strspan(&self) -> Option<StrSpan<'linespan>> {
-        let mut spans = self.fetch_all_strspan();
-        let mut s_iter = spans.iter_mut();
-        let Some(span) = s_iter.next() else {
-            return None;
-        };
+        let spans = self.fetch_all_strspan();
+        let Some(_span) = spans.first() else { return None };
+        let mut span = _span.clone();
 
-        loop {
-            let Some(s_append) = s_iter.next() else { break };
+        for s_append in spans.iter().skip(1) {
             span.str += s_append.str.as_str();
         }
 
@@ -638,10 +838,9 @@ impl<'linespan> CSTNode<'linespan> {
 
     pub fn fetch_linespan(&self) -> Option<LineSpan> {
         let spans = self.fetch_all_strspan();
-        let Some(last) = spans.last() else {
-            return None;
-        };
-        return Some(last.line.clone());
+        let Some(last) = spans.last() else { return None };
+
+        Some(last.line.clone())
     }
 }
 
@@ -753,7 +952,7 @@ impl<'linespan> CSTOutput<'linespan> {
         let indent_sz = self.consume_indent_sz(ls_iter);
 
         let Some(opt_key) = ls_iter.peek() else {
-            self.errs.push(CSTReport::InternalError(100));
+            self.errs.push(CSTReport::InternalError(1));
             return false;
         };
         let key = (*opt_key).clone();
@@ -771,7 +970,7 @@ impl<'linespan> CSTOutput<'linespan> {
         }
 
         let Some(name) = ls_iter.next() else {
-            self.errs.push(CSTReport::InternalError(101));
+            self.errs.push(CSTReport::InternalError(2));
             return false;
         };
 
@@ -1362,6 +1561,7 @@ impl<'linespan> CSTOutput<'linespan> {
                         ls_iter.next();
                         return true;
                     }
+
                     _ => {
                         self.errs.push(CSTReport::ExpectedXGotY {
                             x: Token::Identifier,
@@ -1571,7 +1771,7 @@ impl<'linespan> CSTOutput<'linespan> {
                 };
 
                 let CSTNode::VarMutator { ref mut amount, .. } = varmut_node else {
-                    self.errs.push(CSTReport::InternalError(200));
+                    self.errs.push(CSTReport::InternalError(3));
                     return false;
                 };
 
@@ -1614,7 +1814,7 @@ impl<'linespan> CSTOutput<'linespan> {
                 };
 
                 let CSTNode::VarMutator { ref mut amount, .. } = varmut_node else {
-                    self.errs.push(CSTReport::InternalError(200));
+                    self.errs.push(CSTReport::InternalError(4));
                     return false;
                 };
 
@@ -1677,7 +1877,7 @@ impl<'linespan> CSTOutput<'linespan> {
                         }
 
                         let Some(ltok) = ls_iter.next() else {
-                            self.errs.push(CSTReport::InternalError(101));
+                            self.errs.push(CSTReport::InternalError(5));
                             return true;
                         };
 
@@ -1744,7 +1944,7 @@ impl<'linespan> CSTOutput<'linespan> {
                     CSTNode::VarMethod { .. } => {
                         if !self.expect_peek_token(Token::Newline, ls_iter) {
                             let Some(ltok) = ls_iter.next() else {
-                                self.errs.push(CSTReport::InternalError(102));
+                                self.errs.push(CSTReport::InternalError(6));
                                 return true;
                             };
                             self.errs.push(CSTReport::ExpectedXGotY {
@@ -1757,7 +1957,7 @@ impl<'linespan> CSTOutput<'linespan> {
                     }
 
                     _ => {
-                        self.errs.push(CSTReport::InternalError(103));
+                        self.errs.push(CSTReport::InternalError(7));
                         return true;
                     }
                 }
@@ -1869,7 +2069,7 @@ impl<'linespan> CSTOutput<'linespan> {
         self.consume_space(ls_iter);
 
         let Some(_spcl_key) = spcl_key else {
-            self.errs.push(CSTReport::InternalError(100));
+            self.errs.push(CSTReport::InternalError(8));
             return false;
         };
         let _ = _spcl_key;
@@ -2236,7 +2436,7 @@ impl<'linespan> CSTOutput<'linespan> {
                 }
             }
         } else if if_or_else.token != Token::QuestMark {
-            self.errs.push(CSTReport::InternalError(105));
+            self.errs.push(CSTReport::InternalError(9));
             return true;
         }
 
@@ -2246,7 +2446,7 @@ impl<'linespan> CSTOutput<'linespan> {
                 if_or_else.clone()
             } else {
                 let Some(question_mark) = ls_iter.next() else {
-                    self.errs.push(CSTReport::InternalError(106));
+                    self.errs.push(CSTReport::InternalError(10));
                     return true;
                 };
                 question_mark.clone()
@@ -2254,7 +2454,7 @@ impl<'linespan> CSTOutput<'linespan> {
             bin_op: None,
         };
         let CSTNode::If { ref mut bin_op, .. } = if_stmnt else {
-            self.errs.push(CSTReport::InternalError(206));
+            self.errs.push(CSTReport::InternalError(11));
             return true;
         };
 
@@ -2364,7 +2564,7 @@ impl<'linespan> CSTOutput<'linespan> {
                 "equipR" => EquipType::Right,
                 "equip" => EquipType::Automatic,
                 _ => {
-                    self.errs.push(CSTReport::InternalError(106));
+                    self.errs.push(CSTReport::InternalError(12));
                     EquipType::Automatic
                 }
             },
@@ -2382,7 +2582,7 @@ impl<'linespan> CSTOutput<'linespan> {
             ..
         } = equip_node
         else {
-            self.errs.push(CSTReport::InternalError(207));
+            self.errs.push(CSTReport::InternalError(13));
             return true;
         };
 
@@ -2394,7 +2594,7 @@ impl<'linespan> CSTOutput<'linespan> {
             match peek.token {
                 Token::Space => {
                     if !is_expect_space {
-                        self.errs.push(CSTReport::InternalError(107));
+                        self.errs.push(CSTReport::InternalError(14));
                     }
                     is_expect_space = false;
                     ls_iter.next();
@@ -2600,7 +2800,7 @@ impl<'linespan> CSTOutput<'linespan> {
         }
 
         let Some(name) =
-            self.expect_consume_token_or(Token::Identifier, ls_iter, CSTReport::InternalError(108))
+            self.expect_consume_token_or(Token::Identifier, ls_iter, CSTReport::InternalError(15))
         else {
             return true;
         };
@@ -2673,14 +2873,14 @@ impl<'linespan> CSTOutput<'linespan> {
             ref mut rparen,
         } = paren
         else {
-            self.errs.push(CSTReport::InternalError(209));
+            self.errs.push(CSTReport::InternalError(16));
             return None;
         };
 
         loop {
             if self.expect_peek_token(Token::RParen, ls_iter) {
                 let Some(ltok) = ls_iter.next() else {
-                    self.errs.push(CSTReport::InternalError(109));
+                    self.errs.push(CSTReport::InternalError(17));
                     return None;
                 };
                 *rparen = Some(ltok.clone());
@@ -2696,7 +2896,7 @@ impl<'linespan> CSTOutput<'linespan> {
                 ref mut var,
             } = item
             else {
-                self.errs.push(CSTReport::InternalError(210));
+                self.errs.push(CSTReport::InternalError(17));
                 return None;
             };
 
@@ -2752,14 +2952,14 @@ impl<'linespan> CSTOutput<'linespan> {
             ref mut rbrack,
         } = paren
         else {
-            self.errs.push(CSTReport::InternalError(211));
+            self.errs.push(CSTReport::InternalError(18));
             return None;
         };
 
         loop {
             if self.expect_peek_token(Token::RParen, ls_iter) {
                 let Some(ltok) = ls_iter.next() else {
-                    self.errs.push(CSTReport::InternalError(110));
+                    self.errs.push(CSTReport::InternalError(19));
                     return None;
                 };
                 *rbrack = Some(ltok.clone());
@@ -2775,7 +2975,7 @@ impl<'linespan> CSTOutput<'linespan> {
                 ref mut var,
             } = item
             else {
-                self.errs.push(CSTReport::InternalError(212));
+                self.errs.push(CSTReport::InternalError(20));
                 return None;
             };
 
@@ -3077,7 +3277,7 @@ impl<'linespan> CSTOutput<'linespan> {
                                     }
 
                                     _ => {
-                                        self.errs.push(CSTReport::InternalError(111));
+                                        self.errs.push(CSTReport::InternalError(21));
                                         return None;
                                     }
                                 }
@@ -3132,7 +3332,7 @@ impl<'linespan> CSTOutput<'linespan> {
                                     }
 
                                     _ => {
-                                        self.errs.push(CSTReport::InternalError(112));
+                                        self.errs.push(CSTReport::InternalError(22));
                                         return None;
                                     }
                                 }
@@ -3158,7 +3358,7 @@ impl<'linespan> CSTOutput<'linespan> {
                         ..
                     } = quot
                     else {
-                        self.errs.push(CSTReport::InternalError(212));
+                        self.errs.push(CSTReport::InternalError(23));
                         return None;
                     };
                     loop {
@@ -3228,7 +3428,7 @@ impl<'linespan> CSTOutput<'linespan> {
             },
 
             None => {
-                self.errs.push(CSTReport::InternalError(113));
+                self.errs.push(CSTReport::InternalError(24));
                 return None;
             }
         }
@@ -3267,7 +3467,7 @@ impl<'linespan> CSTOutput<'linespan> {
 
         if self.expect_peek_token(Token::LParen, ls_iter) {
             let Some(lparen) = ls_iter.next() else {
-                self.errs.push(CSTReport::InternalError(114));
+                self.errs.push(CSTReport::InternalError(25));
                 return None;
             };
             let Some(paren) = self.parse_paren(ls_iter, lparen.clone()) else {
@@ -3333,7 +3533,7 @@ impl<'linespan> CSTOutput<'linespan> {
             };
 
             let CSTNode::Label { name } = _path else {
-                self.errs.push(CSTReport::InternalError(115));
+                self.errs.push(CSTReport::InternalError(26));
                 return None;
             };
 
@@ -3473,7 +3673,7 @@ impl<'linespan> CSTOutput<'linespan> {
             ..
         } = ascii
         else {
-            self.errs.push(CSTReport::InternalError(213));
+            self.errs.push(CSTReport::InternalError(27));
             return None;
         };
         let mut is_asciiend_check = true;

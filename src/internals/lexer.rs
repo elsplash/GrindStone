@@ -35,6 +35,7 @@ enum LexStat {
 
 #[derive(Clone, Debug)]
 pub struct LineSpan {
+    pub file: String,
     pub str: String,
     pub num: usize,
 }
@@ -64,11 +65,8 @@ pub struct Span {
 }
 
 impl LineSpan {
-    pub fn new(string: String, num: usize) -> LineSpan {
-        LineSpan{
-            str: string,
-            num: num,
-        }
+    pub fn new(file: String, str: String, num: usize) -> LineSpan {
+        LineSpan{file, str, num}
     }
 
     pub fn to(&self, end: Option<LineSpan>) -> Span {
@@ -111,15 +109,11 @@ impl LineSpan {
 
 impl<'linespan> StrSpan<'linespan> {
     pub fn new(
-        s: String,
+        str: String,
         line: &'linespan LineSpan,
-        clmn_start: usize,
+        clmn: usize,
     ) -> StrSpan<'linespan> {
-        StrSpan{
-            str: s,
-            line: line,
-            clmn: clmn_start,
-        }
+        StrSpan{str, line, clmn}
     }
 
 
@@ -303,7 +297,7 @@ impl<'linespan> LexerOutput<'linespan> {
                 println!("[ERROR] Could not read from file {file_path}.");
                 return false;
             };
-            line_spans.push(LineSpan::new(line, line_num));
+            line_spans.push(LineSpan::new(file_path.to_string(), line, line_num));
             line_num += 1;
         }
 
