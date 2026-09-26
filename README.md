@@ -126,6 +126,32 @@ Make errors have attacked Manual references like:
 
 So people can know where to go.
 
+### Combined bug fix helpers
+
+Make errors be combinable, so that it turns out like this:
+
+```none
+[ERROR] Expected Identifier got Number.
+   |
+23 | for 12 in 1..2
+   |     ^^
+   |
+[HINT] You may replace `12` with a name.
+
+[ERROR] Expected Equal (=) got Identifier.
+   |
+23 | for 12 in 1..2
+   |        ^^
+   |
+[HINT] You may replace `in` with `=`
+
+[HELP] To fix line 23:
+   |
+23 - for 12 in 1..2
+23 + for name = 1..2
+   |
+```
+
 ## Review
 
 > TBA
