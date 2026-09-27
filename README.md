@@ -2,25 +2,12 @@
 
 ## ANNOUNCEMENTS
 
-This project has gone way too big, and now the schedules are colliding.
-I will have to cut some features of this project. I will have to cut
-these features:
+This project has gone out of schedule. So I'll be stopping
+work on it as it will just be a waste of energy, and schedules.
 
-- Linter
-- Formatter
+See you next year!
 
-As they have gone way out of the schedule, you may thank the CST parser
-for this hassle.
-
-This project will still have error checking, don't worry. I am trying
-my best to not make this project a unfinished one where it's forever
- working with a large codebase
-of Stonescript, like [this one](https://github.com/Eunomiac/stone-story).
-
-In which you shouldn't cite your code line by line or be
-disappointed when the code errors out on you on your phone.
-
-> Insert finishing bad code and running it through GrindStone
+## FEATURES
 
 ### A Linter with 4 Modes
 **OFF** (self-explanatory)

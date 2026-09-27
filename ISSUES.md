@@ -32,3 +32,8 @@ proven wrong.
 
 This could be resolved by the sorting of the files in a
 folder.
+
+### The AST is broken
+
+The AST has many TODOs and should be implemented when I
+come back or revisit this next year.

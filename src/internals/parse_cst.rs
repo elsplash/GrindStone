@@ -217,10 +217,9 @@ pub enum CSTNode<'linespan> {
         key: LexToken<'linespan>,
         var: Option<LexToken<'linespan>>,
         equal: Option<LexToken<'linespan>>,
-        start: Option<Box<CSTNode<'linespan>>>,
-        dot1: Option<LexToken<'linespan>>,
-        dot2: Option<LexToken<'linespan>>,
-        end: Option<Box<CSTNode<'linespan>>>,
+        lhs: Option<Box<CSTNode<'linespan>>>,
+        op: Option<LexToken<'linespan>>,
+        rhs: Option<Box<CSTNode<'linespan>>>,
     },
 }
 #[derive(Debug)]
@@ -794,10 +793,9 @@ impl<'linespan> CSTNode<'linespan> {
                 key,
                 var,
                 equal,
-                start,
-                dot1,
-                dot2,
-                end,
+                lhs,
+                op,
+                rhs,
                 ..
             } => {
                 output.push(key.span.clone());
@@ -805,14 +803,13 @@ impl<'linespan> CSTNode<'linespan> {
                 push_if_some_ltok(&mut output, var);
                 push_if_some_ltok(&mut output, equal);
 
-                if let Some(_start) = start {
+                if let Some(_start) = lhs {
                     output.extend(_start.fetch_all_strspan())
                 }
 
-                push_if_some_ltok(&mut output, dot1);
-                push_if_some_ltok(&mut output, dot2);
+                push_if_some_ltok(&mut output, op);
 
-                if let Some(_end) = end {
+                if let Some(_end) = rhs {
                     output.extend(_end.fetch_all_strspan())
                 }
             }
@@ -1294,7 +1291,7 @@ impl<'linespan> CSTOutput<'linespan> {
                     let mut var = None::<LexToken<'linespan>>;
                     let mut equal = None::<LexToken<'linespan>>;
                     let mut lhs = None::<Box<CSTNode<'linespan>>>;
-                    let mut op = None::<LexToken<'linespan>>;
+                    let op = None::<LexToken<'linespan>>;
                     let mut rhs = None::<Box<CSTNode<'linespan>>>;
 
                     self.expect_consume_token_or(
@@ -1305,10 +1302,9 @@ impl<'linespan> CSTOutput<'linespan> {
                             key: key.clone(),
                             var: var.clone(),
                             equal: equal.clone(),
-                            start: start.clone(),
-                            dot1: dot1.clone(),
-                            dot2: dot2.clone(),
-                            end: end.clone(),
+                            lhs: lhs.clone(),
+                            op: op.clone(),
+                            rhs: rhs.clone(),
                         }),
                     );
 
@@ -1320,10 +1316,9 @@ impl<'linespan> CSTOutput<'linespan> {
                             key: key.clone(),
                             var: var.clone(),
                             equal: equal.clone(),
-                            start: start.clone(),
-                            dot1: dot1.clone(),
-                            dot2: dot2.clone(),
-                            end: end.clone(),
+                            lhs: lhs.clone(),
+                            op: op.clone(),
+                            rhs: rhs.clone(),
                         }),
                     ) else {
                         self.output.push(CSTNode::For {
@@ -1331,10 +1326,9 @@ impl<'linespan> CSTOutput<'linespan> {
                             key,
                             var,
                             equal,
-                            start,
-                            dot1,
-                            dot2,
-                            end,
+                            lhs,
+                            op,
+                            rhs,
                         });
                         return true;
                     };
@@ -1349,10 +1343,9 @@ impl<'linespan> CSTOutput<'linespan> {
                             key: key.clone(),
                             var: var.clone(),
                             equal: equal.clone(),
-                            start: start.clone(),
-                            dot1: dot1.clone(),
-                            dot2: dot2.clone(),
-                            end: end.clone(),
+                            lhs: lhs.clone(),
+                            op: op.clone(),
+                            rhs: rhs.clone(),
                         }),
                     ) else {
                         self.output.push(CSTNode::For {
@@ -1360,10 +1353,9 @@ impl<'linespan> CSTOutput<'linespan> {
                             key,
                             var,
                             equal,
-                            start,
-                            dot1,
-                            dot2,
-                            end,
+                            lhs,
+                            op,
+                            rhs,
                         });
                         return true;
                     };
@@ -1373,45 +1365,75 @@ impl<'linespan> CSTOutput<'linespan> {
                     let Some(expr) = self.parse_special_for_expr(ls_iter) else {
                         self.output.push(CSTNode::For {
                             indent_sz,
-                            key: key.clone(),
-                            var: var.clone(),
-                            equal: equal.clone(),
-                            start: start.clone(),
-                            dot1: dot1.clone(),
-                            dot2: dot2.clone(),
-                            end: end.clone(),
+                            key,
+                            var,
+                            equal,
+                            lhs,
+                            op,
+                            rhs,
                         });
                         return true;
                     };
-                    start = Some(Box::new(expr));
+                    lhs = Some(Box::new(expr));
                     self.consume_space(ls_iter);
 
-                    /* bm:current */
+                    /* TODO: We are here. Forever alone for another year. */
+                    match ls_iter.next() {
+                        Some(ltok) => match ltok.token {
+                            Token::Colon => {
+                            },
+
+                            Token::Dot => {},
+
+                            _ => {
+                            	self.output.push(CSTNode::For {
+                            	    indent_sz,
+                            	    key,
+                            	    var,
+                            	    equal,
+                            	    lhs,
+                            	    op,
+                            	    rhs,
+                            	});
+                                return true;
+                            },
+                        },
+                        None => {
+                            self.output.push(CSTNode::For {
+                                indent_sz,
+                                key,
+                                var,
+                                equal,
+                                lhs,
+                                op,
+                                rhs,
+                            });
+                            return true;
+                        },
+                    }
 
                     let Some(expr2) = self.parse_special_for_expr(ls_iter) else {
                         self.output.push(CSTNode::For {
                             indent_sz,
-                            key: key.clone(),
-                            var: var.clone(),
-                            equal: equal.clone(),
-                            start: start.clone(),
-                            dot1: dot1.clone(),
-                            dot2: dot2.clone(),
-                            end: end.clone(),
+                            key,
+                            var,
+                            equal,
+                            lhs,
+                            op,
+                            rhs,
                         });
                         return false;
                     };
-                    end = Some(Box::new(expr2));
+                    rhs = Some(Box::new(expr2));
 
                     self.output.push(CSTNode::For {
                         indent_sz,
                         key,
                         var,
                         equal,
-                        start,
-                        dot1,
-                        dot2,
-                        end,
+                        lhs,
+                        op,
+                        rhs,
                     });
                     return true;
                 }
