@@ -405,8 +405,17 @@ impl<'linespan> Display for ASTReport<'linespan> {
                 let help_code: &str;
                 match x {
                     ARMissing::XPos => {
-                        if let Some(span) = y.fetxh_all_strspan() {
-                            help_code = format!("").as_str();
+                        let spans = y.fetch_all_strspans();
+                        if let Some(first) = spans.first() {
+                            spans.insert(2, StrSpan{
+                                line: first.line,
+                                str: "[X_POSITION]".to_string(),
+                                clmn: 0
+                            });
+                            // ...
+                            help_code = format!();
+                        } else {
+                            help_code = "Internal Error";
                         }
                     },
                     ARMissing::YPos => {
@@ -415,9 +424,14 @@ impl<'linespan> Display for ASTReport<'linespan> {
 
                     _ => todo!()
                 }
+                let line: &str;
+                match y.fetch_merge_linespan() {
+                    Some(span) => line = format!("{}", span).as_str(),
+                    None => line = "Internal Error",
+                }
                 (
                     format!("Missing {x} in this statement").as_str(),
-                    format!("{}".fetch_merge_strspan()).as_str(),
+                    line,
                     format!("You can put a {x} here.").as_str(),
                     Some(help_code.as_str()),
                 )

@@ -291,7 +291,7 @@ fn fetch_help_code<'linespan>(err: &CSTReport<'linespan>) -> (String, String) {
                 let lhs: String = y.span.str.chars().take(y.span.clmn).collect();
                 let rhs: String = y.span.str.chars()
                     .skip(y.span.clmn).take(y.span.line.str.len() - y.span.clmn).collect();
-                let modified_code = format!("{lhs}+{rhs} <- This is an incrementor");
+                let modified_code = format!("{lhs}+{rhs}");
                 help_code = format!(
                     "{num_size} |\n{} - {}\n{} + {modified_code}\n{num_size} |",
                     y.span.line.num,
@@ -306,7 +306,7 @@ fn fetch_help_code<'linespan>(err: &CSTReport<'linespan>) -> (String, String) {
                 let lhs: String = y.span.str.chars().take(y.span.clmn).collect();
                 let rhs: String = y.span.str.chars()
                     .skip(y.span.clmn).take(y.span.line.str.len() - y.span.clmn).collect();
-                let modified_code = format!("{lhs}+{rhs} <- This is an decrementor");
+                let modified_code = format!("{lhs}-something {rhs} <- This is an minus");
                 help_code = format!(
                     "{num_size} |\n{} - {}\n{} + {modified_code}\n{num_size} |",
                     y.span.line.num,
@@ -316,12 +316,12 @@ fn fetch_help_code<'linespan>(err: &CSTReport<'linespan>) -> (String, String) {
             },
 
             Token::Equal => {
-                help_message = "[HINT] You may insert Equals (=), or assignment.".to_string();
+                help_message = "[HINT] You may insert Equals (=).".to_string();
                 let num_size = " ".repeat(y.span.line.num.to_string().len());
                 let lhs: String = y.span.str.chars().take(y.span.clmn).collect();
                 let rhs: String = y.span.str.chars()
                     .skip(y.span.clmn).take(y.span.line.str.len() - y.span.clmn).collect();
-                let modified_code = format!("{lhs}={rhs} <- This is an assigment");
+                let modified_code = format!("{lhs}={rhs}");
                 help_code = format!(
                     "{num_size} |\n{} - {}\n{} + {modified_code}\n{num_size} |",
                     y.span.line.num,
@@ -928,16 +928,10 @@ impl<'linespan> CSTOutput<'linespan> {
                 }
 
                 _ => {
-                    self.errs.push(CSTReport::ExpectedXGotY {
-                        x: if is_expect_newline {
-                            Token::Newline
-                        } else {
-                            Token::Identifier
-                        },
-                        y: (*peek).clone(),
-                    });
-                    ls_iter.next();
-                }
+                    is_expect_newline = true;
+                    let Some(expr) = self.parse_expr(&mut ls_iter, 0, false) else { continue };
+                    self.output.push(expr);
+                },
             }
             self.consume_space(&mut ls_iter);
         }
@@ -1299,10 +1293,9 @@ impl<'linespan> CSTOutput<'linespan> {
                     let key = name.clone();
                     let mut var = None::<LexToken<'linespan>>;
                     let mut equal = None::<LexToken<'linespan>>;
-                    let mut start = None::<Box<CSTNode<'linespan>>>;
-                    let mut dot1 = None::<LexToken<'linespan>>;
-                    let mut dot2 = None::<LexToken<'linespan>>;
-                    let mut end = None::<Box<CSTNode<'linespan>>>;
+                    let mut lhs = None::<Box<CSTNode<'linespan>>>;
+                    let mut op = None::<LexToken<'linespan>>;
+                    let mut rhs = None::<Box<CSTNode<'linespan>>>;
 
                     self.expect_consume_token_or(
                         Token::Space,
@@ -1393,62 +1386,7 @@ impl<'linespan> CSTOutput<'linespan> {
                     start = Some(Box::new(expr));
                     self.consume_space(ls_iter);
 
-                    let Some(dot) = self.expect_consume_token_or(
-                        Token::Dot,
-                        ls_iter,
-                        CSTReport::EndOfFileDuring(CSTNode::For {
-                            indent_sz,
-                            key: key.clone(),
-                            var: var.clone(),
-                            equal: equal.clone(),
-                            start: start.clone(),
-                            dot1: dot1.clone(),
-                            dot2: dot2.clone(),
-                            end: end.clone(),
-                        }),
-                    ) else {
-                        self.output.push(CSTNode::For {
-                            indent_sz,
-                            key,
-                            var,
-                            equal,
-                            start,
-                            dot1,
-                            dot2,
-                            end,
-                        });
-                        return true;
-                    };
-                    dot1 = Some(dot);
-
-                    let Some(dot) = self.expect_consume_token_or(
-                        Token::Dot,
-                        ls_iter,
-                        CSTReport::EndOfFileDuring(CSTNode::For {
-                            indent_sz,
-                            key: key.clone(),
-                            var: var.clone(),
-                            equal: equal.clone(),
-                            start: start.clone(),
-                            dot1: dot1.clone(),
-                            dot2: dot2.clone(),
-                            end: end.clone(),
-                        }),
-                    ) else {
-                        self.output.push(CSTNode::For {
-                            indent_sz,
-                            key,
-                            var,
-                            equal,
-                            start,
-                            dot1,
-                            dot2,
-                            end,
-                        });
-                        return true;
-                    };
-                    dot2 = Some(dot);
-                    self.consume_space(ls_iter);
+                    /* bm:current */
 
                     let Some(expr2) = self.parse_special_for_expr(ls_iter) else {
                         self.output.push(CSTNode::For {
@@ -1523,7 +1461,12 @@ impl<'linespan> CSTOutput<'linespan> {
                         path,
                     });
                     return true;
-                }
+                },
+
+                "continue" | "break" => {
+                    self.output.push(CSTNode::Label{ name: name.clone() });
+                    return true;
+                },
 
                 _ => {}
             }
@@ -1677,7 +1620,7 @@ impl<'linespan> CSTOutput<'linespan> {
 
                     _ => {
                         self.errs.push(CSTReport::ExpectedXGotY {
-                            x: Token::Plus,
+                            x: Token::Equal,
                             y: (*equal_or_plus).clone(),
                         });
                         return true;
@@ -1733,7 +1676,7 @@ impl<'linespan> CSTOutput<'linespan> {
 
                     _ => {
                         self.errs.push(CSTReport::ExpectedXGotY {
-                            x: Token::Dash,
+                            x: Token::Equal,
                             y: (*equal_or_dash).clone(),
                         });
                         return true;
