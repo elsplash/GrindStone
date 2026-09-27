@@ -152,6 +152,16 @@ Make errors be combinable, so that it turns out like this:
    |
 ```
 
+### The CST Parser Rewrite
+
+Because of the horrid conceptual misunderstandiings
+of the CST Parser when I made it back when I started
+it, it's absurdly horrible.
+
+So I may have to rewrite/refactor it completely,
+because it didn't really goes to the standard of
+CST Parsers.
+
 ## Review
 
 > TBA
